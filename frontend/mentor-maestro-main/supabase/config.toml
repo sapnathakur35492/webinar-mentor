@@ -1,0 +1,19 @@
+project_id = "mqoxowepjkktfzabmfcs"
+
+[functions.generate-concepts]
+verify_jwt = false
+
+[functions.refine-concept]
+verify_jwt = false
+
+[functions.generate-emails]
+verify_jwt = false
+
+[functions.refine-email]
+verify_jwt = false
+
+[functions.generate-media]
+verify_jwt = false
+
+[functions.generate-image]
+verify_jwt = false
