@@ -5,6 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
@@ -24,7 +31,7 @@ export default function Signup() {
         e.preventDefault();
         setShowErrors(true);
 
-        if (!firstName || !lastName || !email || !password) {
+        if (!firstName || !lastName || !email || !password || !country) {
             return;
         }
 
@@ -44,7 +51,7 @@ export default function Signup() {
     };
 
     return (
-        <div className="min-h-screen w-full relative flex items-center justify-center py-16">
+        <div className="min-h-screen w-full relative flex items-center justify-center lg:justify-end py-16">
             {/* Background Image */}
             <div
                 className="fixed inset-0 z-0 bg-cover bg-center bg-no-repeat"
@@ -55,7 +62,7 @@ export default function Signup() {
             </div>
 
             {/* Signup Card */}
-            <Card className="z-10 w-full max-w-[650px] bg-[rgb(48,61,54)] border-none text-white shadow-none relative rounded-[10px] my-auto">
+            <Card className="z-10 w-full max-w-[580px] bg-[rgb(48,61,54)] border-none text-white shadow-none relative rounded-[10px] my-auto lg:mr-24">
                 <div className="px-[60px] py-[60px]">
                     {/* Header Section - No Logo */}
                     <div className="text-center mb-[30px]">
@@ -65,41 +72,40 @@ export default function Signup() {
 
                     <CardContent className="p-0">
                         <form onSubmit={handleSubmit} className="space-y-5">
-                            <div className="grid grid-cols-2 gap-4">
-                                {/* First Name */}
-                                <div className="space-y-2">
-                                    <Label htmlFor="firstName" className="text-sm font-medium text-white">
-                                        Fornavn
-                                    </Label>
-                                    <Input
-                                        id="firstName"
-                                        type="text"
-                                        placeholder="Fornavn"
-                                        value={firstName}
-                                        onChange={(e) => setFirstName(e.target.value)}
-                                        className={`h-[44px] bg-white text-gray-900 border border-slate-200 rounded-md focus:ring-2 focus:ring-[#096cd0] ${showErrors && !firstName ? "ring-2 ring-red-500" : ""}`}
-                                    />
-                                    {showErrors && !firstName && (
-                                        <p className="text-red-400 text-xs mt-1">Påkrevd</p>
-                                    )}
-                                </div>
-                                {/* Last Name */}
-                                <div className="space-y-2">
-                                    <Label htmlFor="lastName" className="text-sm font-medium text-white">
-                                        Etternavn
-                                    </Label>
-                                    <Input
-                                        id="lastName"
-                                        type="text"
-                                        placeholder="Etternavn"
-                                        value={lastName}
-                                        onChange={(e) => setLastName(e.target.value)}
-                                        className={`h-[44px] bg-white text-gray-900 border border-slate-200 rounded-md focus:ring-2 focus:ring-[#096cd0] ${showErrors && !lastName ? "ring-2 ring-red-500" : ""}`}
-                                    />
-                                    {showErrors && !lastName && (
-                                        <p className="text-red-400 text-xs mt-1">Påkrevd</p>
-                                    )}
-                                </div>
+                            {/* First Name */}
+                            <div className="space-y-2">
+                                <Label htmlFor="firstName" className="text-sm font-medium text-white">
+                                    Fornavn
+                                </Label>
+                                <Input
+                                    id="firstName"
+                                    type="text"
+                                    placeholder="Fornavn"
+                                    value={firstName}
+                                    onChange={(e) => setFirstName(e.target.value)}
+                                    className={`h-[44px] bg-white text-gray-900 border border-slate-200 rounded-md focus:ring-2 focus:ring-[#096cd0] ${showErrors && !firstName ? "ring-2 ring-red-500" : ""}`}
+                                />
+                                {showErrors && !firstName && (
+                                    <p className="text-red-400 text-xs mt-1">Påkrevd</p>
+                                )}
+                            </div>
+
+                            {/* Last Name */}
+                            <div className="space-y-2">
+                                <Label htmlFor="lastName" className="text-sm font-medium text-white">
+                                    Etternavn
+                                </Label>
+                                <Input
+                                    id="lastName"
+                                    type="text"
+                                    placeholder="Etternavn"
+                                    value={lastName}
+                                    onChange={(e) => setLastName(e.target.value)}
+                                    className={`h-[44px] bg-white text-gray-900 border border-slate-200 rounded-md focus:ring-2 focus:ring-[#096cd0] ${showErrors && !lastName ? "ring-2 ring-red-500" : ""}`}
+                                />
+                                {showErrors && !lastName && (
+                                    <p className="text-red-400 text-xs mt-1">Påkrevd</p>
+                                )}
                             </div>
 
                             {/* Email */}
@@ -138,27 +144,26 @@ export default function Signup() {
                                 )}
                             </div>
 
-                            {/* Country (Visual only for now) */}
+                            {/* Country using Shadcn Select */}
                             <div className="space-y-2">
                                 <Label htmlFor="country" className="text-sm font-medium text-white">
                                     Land
                                 </Label>
-                                <div className="relative">
-                                    <select
-                                        className="flex h-[44px] w-full items-center justify-between rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[#096cd0] disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1 text-gray-900 appearance-none"
-                                        value={country}
-                                        onChange={(e) => setCountry(e.target.value)}
-                                        style={{ backgroundImage: 'none' }} // Remove default arrow if needed or keep standard
-                                    >
-                                        <option value="" disabled>Velg land</option>
-                                        <option value="NO">Norge</option>
-                                        <option value="SE">Sverige</option>
-                                        <option value="DK">Danmark</option>
-                                        <option value="US">United States</option>
-                                        <option value="Other">Annet</option>
-                                    </select>
-                                    {/* Custom arrow if needed, but standard select is safer for zero-dep */}
-                                </div>
+                                <Select onValueChange={setCountry} value={country}>
+                                    <SelectTrigger className={`w-full h-[44px] bg-white text-gray-900 border border-slate-200 rounded-md focus:ring-2 focus:ring-[#096cd0] ${showErrors && !country ? "ring-2 ring-red-500" : ""}`}>
+                                        <SelectValue placeholder="Velg land" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-white">
+                                        <SelectItem value="NO">Norge</SelectItem>
+                                        <SelectItem value="SE">Sverige</SelectItem>
+                                        <SelectItem value="DK">Danmark</SelectItem>
+                                        <SelectItem value="US">United States</SelectItem>
+                                        <SelectItem value="Other">Annet</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                {showErrors && !country && (
+                                    <p className="text-red-400 text-xs mt-1">Vennligst velg land</p>
+                                )}
                             </div>
 
                             {/* Register Button */}

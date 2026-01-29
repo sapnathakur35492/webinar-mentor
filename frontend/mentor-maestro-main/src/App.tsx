@@ -1,21 +1,23 @@
-  import { Toaster } from "@/components/ui/toaster";
+import { Suspense, lazy } from "react";
+import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
-import Index from "./pages/Index";
-import Auth from "./pages/Auth"; // Keeping Auth for legacy reference if needed, or can remove
-import Login from "./pages/Login";
-import Signup from "./pages/Signup";
-import Setup from "./pages/Setup";
-import Concepts from "./pages/Concepts";
-import Structure from "./pages/Structure";
-import Approvals from "./pages/Approvals";
-import Emails from "./pages/Emails";
-import VideoPage from "./pages/Video";
-import Settings from "./pages/Settings";
-import NotFound from "./pages/NotFound";
+
+// Lazy load components for performance
+const Index = lazy(() => import("./pages/Index"));
+const Login = lazy(() => import("./pages/Login"));
+const Signup = lazy(() => import("./pages/Signup"));
+const Setup = lazy(() => import("./pages/Setup"));
+const Concepts = lazy(() => import("./pages/Concepts"));
+const Structure = lazy(() => import("./pages/Structure"));
+const Approvals = lazy(() => import("./pages/Approvals"));
+const Emails = lazy(() => import("./pages/Emails"));
+const VideoPage = lazy(() => import("./pages/Video"));
+const Settings = lazy(() => import("./pages/Settings"));
+const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
 
@@ -81,7 +83,13 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <AppRoutes />
+          <Suspense fallback={
+            <div className="min-h-screen bg-background flex items-center justify-center">
+              <div className="animate-pulse text-muted-foreground">Loading...</div>
+            </div>
+          }>
+            <AppRoutes />
+          </Suspense>
         </BrowserRouter>
       </TooltipProvider>
     </AuthProvider>
