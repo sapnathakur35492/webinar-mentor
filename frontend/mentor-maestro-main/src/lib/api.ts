@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Use environment variable for API base URL - change in .env for production
-const API_Base = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'}/webinar`;
+const API_Base = `${import.meta.env.VITE_API_BASE_URL || 'http://13.62.156.107:8000/api'}/webinar`;
 
 export interface WebinarAsset {
   id: string;

@@ -23,7 +23,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Use environment variable for API base URL - change in .env for production
-const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'}/auth`;
+const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'http://13.62.156.107:8000/api'}/auth`;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
