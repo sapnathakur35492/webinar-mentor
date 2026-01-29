@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
-export type DocumentType = 
+export type DocumentType =
   | "onboarding_doc"
   | "hook_analysis"
   | "transcript"
@@ -31,7 +31,12 @@ export function useDocuments() {
     queryKey: ["documents", user?.id],
     queryFn: async () => {
       if (!user?.id) return [];
-      
+
+      // MOCK: Return empty documents for now as we migrated away from Supabase
+      // TODO: Implement fetch from Python backend
+      return [] as Document[];
+
+      /* 
       const { data, error } = await supabase
         .from("documents")
         .select("*")
@@ -40,6 +45,7 @@ export function useDocuments() {
 
       if (error) throw error;
       return data as Document[];
+      */
     },
     enabled: !!user?.id,
   });
