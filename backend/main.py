@@ -26,9 +26,10 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:8080",
         "http://localhost:3000",
-        "http://13.62.156.107:3000",
+        "http://localhost:3005",
+        "https://devmentor.change20.no",
+        "https://devwebinar.change20.no",
         "http://13.62.156.107:3005",
-        "http://13.62.156.107",
         "*"
     ],
     allow_credentials=True,

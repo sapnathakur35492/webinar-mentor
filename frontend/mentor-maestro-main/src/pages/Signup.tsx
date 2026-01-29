@@ -44,7 +44,7 @@ export default function Signup() {
     };
 
     return (
-        <div className="min-h-screen h-screen w-full relative flex items-center justify-center lg:justify-end overflow-hidden py-16">
+        <div className="min-h-screen w-full relative flex items-center justify-center py-16">
             {/* Background Image */}
             <div
                 className="fixed inset-0 z-0 bg-cover bg-center bg-no-repeat"
@@ -55,17 +55,10 @@ export default function Signup() {
             </div>
 
             {/* Signup Card */}
-            <Card className="z-10 w-full max-w-[650px] bg-[rgb(48,61,54)] border-none text-white shadow-none relative rounded-[10px] lg:mr-24 my-auto">
+            <Card className="z-10 w-full max-w-[650px] bg-[rgb(48,61,54)] border-none text-white shadow-none relative rounded-[10px] my-auto">
                 <div className="px-[60px] py-[60px]">
-                    {/* Logo Section */}
+                    {/* Header Section - No Logo */}
                     <div className="text-center mb-[30px]">
-                        <div className="flex justify-center mb-6">
-                            <img
-                                src="https://demo.devredorange.com/change20/wp-content/uploads/2025/10/CHANGE_logo_Light-240x143.png"
-                                alt="Change 2.0"
-                                className="w-[130px] h-auto object-contain"
-                            />
-                        </div>
                         <h1 className="text-[24px] font-bold text-white mb-1">Bli en mentor</h1>
                         <p className="text-gray-300">Del kunnskapen din. Styrk neste generasjon</p>
                     </div>
