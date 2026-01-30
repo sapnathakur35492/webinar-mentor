@@ -382,7 +382,7 @@ export default function Setup() {
                             onChange={(e) => handleChange(field.key, e.target.value)}
                             placeholder={field.placeholder}
                             className={cn(
-                              "h-12 bg-gray-50 border-gray-200 focus:bg-white transition-all text-base",
+                              "h-12 bg-gray-50 border-gray-200 focus:bg-white transition-all text-base text-gray-900",
                               isError && "border-red-300 focus-visible:ring-red-200 bg-red-50/30"
                             )}
                           />
@@ -392,7 +392,7 @@ export default function Setup() {
                             onChange={(e) => handleChange(field.key, e.target.value)}
                             placeholder={field.placeholder}
                             className={cn(
-                              "min-h-[120px] bg-gray-50 border-gray-200 focus:bg-white transition-all resize-none text-base leading-relaxed",
+                              "min-h-[120px] bg-gray-50 border-gray-200 focus:bg-white transition-all resize-none text-base leading-relaxed text-gray-900",
                               isError && "border-red-300 focus-visible:ring-red-200 bg-red-50/30"
                             )}
                           />
