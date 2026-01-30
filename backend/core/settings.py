@@ -4,7 +4,8 @@ from typing import List
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Change 2.0 Webinar Agent"
-    BASE_URL: str = "https://devwebinar.change20.no"
+    # Default localhost - .env se override hoga production pe
+    BASE_URL: str = "http://localhost:8000"
     DATABASE_URL: str = "sqlite:///./change20.db"
     SECRET_KEY: str = "supersecret"
     DEBUG: bool = True

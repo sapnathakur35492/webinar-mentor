@@ -5,12 +5,15 @@ services:
     build: .
     ports:
       - "8000:8000"
+    env_file:
+      - .env
     environment:
-      # Using Cloud MongoDB, so no need for local db service
-      DATABASE_URL: mongodb+srv://change20U:YkliB3wirfhVJFVC@change20dev.uj6bor5.mongodb.net/
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      DATABASE_URL: mongodb+srv://change20U:YkliB3wirfhVJFVC@change20dev.uj6bor5.mongodb.net/change20_db
       BASE_URL: https://devwebinar.change20.no
       DEBUG: "True"
+      # OpenAI 429 bypass - set true on live when quota exhausted
+      MOCK_OPENAI_MODE: ${MOCK_OPENAI_MODE:-true}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
     volumes:
       - .:/app
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
