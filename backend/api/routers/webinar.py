@@ -99,7 +99,10 @@ async def generate_concepts(request: GenerateRequest):
         result = await webinar_ai_service.generate_concepts_chain(request.asset_id)
         return {"status": "success", "data": result}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        import traceback
+        traceback.print_exc()
+        print(f"ERROR in generate_concepts: {e}")
+        raise HTTPException(status_code=500, detail=f"Server error: {str(e)}")
 
 @router.post("/concepts/update-from-meeting")
 async def update_concept(request: TranscriptUpdateRequest):

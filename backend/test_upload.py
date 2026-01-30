@@ -5,8 +5,8 @@ import requests
 import time
 import os
 
-# Test configuration
-API_BASE = "http://localhost:8000/api/webinar"
+# Test configuration (set TEST_API_URL for production, default localhost)
+API_BASE = os.getenv("TEST_API_URL", "http://localhost:8000/api/webinar")
 PDF_PATH = r"c:\Users\Santosh\Documents\Change0_webinar\Perfect_Webinar_Only_Intro.pdf"
 
 def test_upload_and_poll():

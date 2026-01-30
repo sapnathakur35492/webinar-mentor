@@ -17,6 +17,8 @@ from core.settings import settings
 # Configuration
 OPENAI_API_KEY = settings.OPENAI_API_KEY
 OPENAI_ENDPOINT = "https://api.openai.com/v1/chat/completions"
+# When True, skip OpenAI and use mock concepts (for testing / when quota exhausted)
+USE_MOCK_OPENAI = os.getenv("MOCK_OPENAI_MODE", "false").lower() == "true"
 
 class WebinarAIService:
     
@@ -52,7 +54,63 @@ class WebinarAIService:
         await asset.save()
         return asset
 
+    def _get_mock_concepts(self) -> List[Concept]:
+        """Return mock concepts for fallback when OpenAI fails (429, quota, etc.)"""
+        return [
+            Concept(
+                title="The Change 2.0 Framework",
+                big_idea="Automating business transformation using AI",
+                hook="Why manual consulting is dead",
+                structure_points=["The Old Way", "The AI Shift", "The New Reality"],
+                secrets=[
+                    {"assumption": "AI is hard", "belief": "AI is easy", "story": "My grandma can do it", "transformation": "Fear to Power"},
+                    {"assumption": "Time is fixed", "belief": "Time is elastic", "story": "The 4 hour work week", "transformation": "Burnout to Balance"},
+                    {"assumption": "Quality takes time", "belief": "Speed creates quality", "story": "The MVP mindset", "transformation": "Perfectionism to Progress"}
+                ],
+                mechanism="The Neural Sync Protocol",
+                value_anchor={"price": ["1000"], "comparison": ["100 hours of manual work"]},
+                bonus_ideas=["AI Toolkit", "Prompt Library"],
+                cta_sentence="Join the revolution today",
+                promises=["Save 20 hours/week", "Double revenue"]
+            ),
+            Concept(
+                title="Webinar Mastery 2026",
+                big_idea="Perfect webinars without the stress",
+                hook="The 3-step formula top creators use",
+                structure_points=["Hook", "Story", "Offer"],
+                secrets=[
+                    {"assumption": "Selling is sleazy", "belief": "Selling is serving", "story": "The doctor analogy", "transformation": "Hiding to Helping"},
+                    {"assumption": "I need a big audience", "belief": "I need a ready audience", "story": "The 1000 true fans", "transformation": "Broad to Deep"},
+                    {"assumption": "Tech is the barrier", "belief": "Message is the barrier", "story": "The ugly funnel that converted", "transformation": "Confused to Clear"}
+                ],
+                mechanism="The Engagement Loop",
+                value_anchor={"price": ["997"], "comparison": ["Hiring a copywriter"]},
+                bonus_ideas=["Slide Templates", "Email Scripts"],
+                cta_sentence="Start your masterclass now",
+                promises=["Convert at 10%", "Build authority"]
+            ),
+            Concept(
+                title="High-Ticket Freedom",
+                big_idea="Selling premium services with zero sales calls",
+                hook="Stop chasing clients, let them come to you",
+                structure_points=["Attraction", "Nurture", "Conversion"],
+                secrets=[
+                    {"assumption": "Cold calling works", "belief": "Inbound attraction works", "story": "The empty phone", "transformation": "Chasing to Attracting"},
+                    {"assumption": "Price is logic", "belief": "Price is emotion", "story": "The luxury brand", "transformation": "Commodity to Premium"},
+                    {"assumption": "I need credentials", "belief": "I need results", "story": "The dropout genius", "transformation": "Imposter to Authority"}
+                ],
+                mechanism="The Authority Beacon",
+                value_anchor={"price": ["2500"], "comparison": ["A full sales team"]},
+                bonus_ideas=["Sales Scripts", "Objection Handling Guide"],
+                cta_sentence="Claim your freedom",
+                promises=["Zero cold calls", "High margin clients"]
+            )
+        ]
+
     async def generate_content(self, prompt: str) -> str:
+        """Call OpenAI API. Raises ValueError on 429/quota/API errors."""
+        if not OPENAI_API_KEY:
+            raise ValueError("OPENAI API Error (no key): OPENAI_API_KEY not set")
         try:
             headers = {
                 "Authorization": f"Bearer {OPENAI_API_KEY}",
@@ -66,66 +124,97 @@ class WebinarAIService:
                 ],
                 "temperature": 0.7
             }
-            
-            # Using synchronous requests inside async method is blocking, but for this prototype/script it's acceptable.
-            # Ideally use aiohttp, but requests is simpler to verify right now based on the user's curl validaton.
             response = requests.post(OPENAI_ENDPOINT, headers=headers, json=payload)
             
             if response.status_code == 200:
                 data = response.json()
-                # Standard OpenAI chat completions response format
                 if "choices" in data and len(data["choices"]) > 0:
-                    extracted_text = data["choices"][0]["message"]["content"]
-                    return extracted_text
-                else:
-                    raise ValueError("Unexpected response format from OpenAI")
+                    return data["choices"][0]["message"]["content"]
+                raise ValueError("Unexpected response format from OpenAI")
+            elif response.status_code == 429:
+                # Explicit 429 handling - quota exceeded or rate limit
+                err_msg = response.text[:500] if response.text else "Rate limit / quota exceeded"
+                raise ValueError(f"OpenAI 429: {err_msg}")
             else:
-                raise ValueError(f"OpenAI API Error ({response.status_code}): {response.text}")
-                
-        except Exception as e:
-            print(f"AI Gen Error: {e}")
-            raise ValueError(f"AI Generation Failed: {e}")
+                raise ValueError(f"OpenAI API Error ({response.status_code}): {response.text[:500]}")
+        except requests.RequestException as e:
+            print(f"AI Gen Network Error: {e}")
+            raise ValueError(f"OpenAI connection failed: {e}") from e
+
+    async def _apply_mock_concepts_and_return(self, asset: WebinarAsset, reason: str = "API error") -> dict:
+        """Apply mock concepts to asset and return response. Used for fallback when OpenAI fails."""
+        mock_concepts = self._get_mock_concepts()
+        asset.concepts_original = mock_concepts
+        asset.concepts_improved = mock_concepts
+        asset.concepts_evaluated = f"MOCK EVALUATION ({reason})"
+        await asset.save()
+        print(f"[WebinarAI] Asset saved with MOCK concepts (reason: {reason})")
+        return {
+            "original": "MOCK GENERATION - OpenAI quota/API issue. Using demo concepts.",
+            "evaluation": "MOCK EVALUATION",
+            "improved": "MOCK IMPROVEMENT",
+            "concepts_count": len(mock_concepts),
+            "mock_fallback": True,
+            "mock_reason": reason
+        }
 
     async def generate_concepts_chain(self, asset_id: str) -> dict:
         asset = await WebinarAsset.get(asset_id)
         if not asset:
             raise ValueError("Asset not found")
         
+        # MOCK MODE: Skip OpenAI entirely (set MOCK_OPENAI_MODE=true when quota exhausted)
+        if USE_MOCK_OPENAI:
+            print(f"[WebinarAI] MOCK_OPENAI_MODE enabled - using mock concepts")
+            return await self._apply_mock_concepts_and_return(asset, "MOCK_OPENAI_MODE")
+        
         print(f"[WebinarAI] Starting concept generation for asset {asset_id}")
+        concepts_text = ""
+        evaluation_text = ""
+        improved_text = ""
+        parsed_concepts: List[Concept] = []
+        improved_concepts: List[Concept] = []
             
-        # 1. Generate (English)
-        prompt_1 = CONCEPT_GENERATION_PROMPT.format(
-            onboarding_doc=asset.onboarding_doc_content, 
-            hook_analysis=asset.hook_analysis_content
-        )
-        concepts_text = await self.generate_content(prompt_1)
-        print(f"[WebinarAI] Got concepts_text: {concepts_text[:200]}...")
+        try:
+            # 1. Generate (English)
+            prompt_1 = CONCEPT_GENERATION_PROMPT.format(
+                onboarding_doc=asset.onboarding_doc_content or "", 
+                hook_analysis=asset.hook_analysis_content or ""
+            )
+            concepts_text = await self.generate_content(prompt_1)
+            print(f"[WebinarAI] Got concepts_text: {concepts_text[:200]}...")
+            
+            parsed_concepts = self._parse_concepts_from_text(concepts_text)
+            
+            # 2. Evaluate (English)
+            prompt_2 = CONCEPT_EVALUATION_PROMPT.format(concepts=concepts_text)
+            evaluation_text = await self.generate_content(prompt_2)
+            asset.concepts_evaluated = evaluation_text
+            print(f"[WebinarAI] Got evaluation")
+            
+            # 3. Improve (English)
+            prompt_3 = CONCEPT_IMPROVEMENT_PROMPT.format(
+                concepts=concepts_text,
+                evaluation=evaluation_text
+            )
+            improved_text = await self.generate_content(prompt_3)
+            
+            improved_concepts = self._parse_concepts_from_text(improved_text)
+            asset.concepts_improved = improved_concepts
+            print(f"[WebinarAI] Parsed {len(improved_concepts)} improved concepts")
+            
+        except Exception as e:
+            err_str = str(e).lower()
+            reason = "429 quota" if "429" in err_str or "quota" in err_str else str(e)[:200]
+            print(f"[WebinarAI] OpenAI API Error: {e}")
+            print(f"[WebinarAI] FALLING BACK TO MOCK CONCEPTS (reason: {reason})")
+            return await self._apply_mock_concepts_and_return(asset, reason)
         
-        # Parse concepts from AI response (expect JSON array)
-        parsed_concepts = self._parse_concepts_from_text(concepts_text)
         asset.concepts_original = parsed_concepts
-        print(f"[WebinarAI] Parsed {len(parsed_concepts)} original concepts")
-        
-        # 2. Evaluate (English)
-        prompt_2 = CONCEPT_EVALUATION_PROMPT.format(concepts=concepts_text)
-        evaluation_text = await self.generate_content(prompt_2)
-        asset.concepts_evaluated = evaluation_text
-        print(f"[WebinarAI] Got evaluation")
-        
-        # 3. Improve (English)
-        prompt_3 = CONCEPT_IMPROVEMENT_PROMPT.format(
-            concepts=concepts_text,
-            evaluation=evaluation_text
-        )
-        improved_text = await self.generate_content(prompt_3)
-        
-        # Parse improved concepts
-        improved_concepts = self._parse_concepts_from_text(improved_text)
-        asset.concepts_improved = improved_concepts
-        print(f"[WebinarAI] Parsed {len(improved_concepts)} improved concepts")
-        
+        if not asset.concepts_improved:
+            asset.concepts_improved = improved_concepts
         await asset.save()
-        print(f"[WebinarAI] Asset saved with concepts")
+        print(f"[WebinarAI] Asset saved with AI concepts")
         
         return {
             "original": concepts_text,

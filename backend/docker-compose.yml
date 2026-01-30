@@ -9,7 +9,7 @@ services:
       # Using Cloud MongoDB, so no need for local db service
       DATABASE_URL: mongodb+srv://change20U:YkliB3wirfhVJFVC@change20dev.uj6bor5.mongodb.net/
       OPENAI_API_KEY: ${OPENAI_API_KEY}
-      BASE_URL: http://51.21.217.86:8000
+      BASE_URL: https://devwebinar.change20.no
       DEBUG: "True"
     volumes:
       - .:/app

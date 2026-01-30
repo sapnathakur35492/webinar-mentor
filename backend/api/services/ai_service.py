@@ -13,7 +13,7 @@ class AIService:
     def __init__(self):
         self.api_key = settings.OPENAI_API_KEY
         self._client = None
-        self.model = "gpt-4o"
+        self.model = "gpt-4o-mini"
         
     @property
     def client(self):
