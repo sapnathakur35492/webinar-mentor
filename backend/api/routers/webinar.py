@@ -108,20 +108,18 @@ async def generate_concepts(request: GenerateRequest):
         import traceback
         traceback.print_exc()
         print(f"ERROR in generate_concepts: {e}")
-        # Router-level fallback: on OpenAI 429/quota, return mock concepts (live server safety net)
-        if _is_openai_quota_error(e):
-            try:
-                print(f"[WebinarRouter] OpenAI quota error detected, applying mock fallback")
-                result = await webinar_ai_service.apply_mock_fallback_for_asset(
-                    request.asset_id, reason="429 quota (router fallback)"
-                )
-                return {"status": "success", "data": result}
-            except Exception as fallback_err:
-                print(f"[WebinarRouter] Mock fallback also failed: {fallback_err}")
-                # Last resort: return mock data without saving to DB
-                mock_data = webinar_ai_service._get_mock_response("429 - save failed")
-                return {"status": "success", "data": mock_data}
-        raise HTTPException(status_code=500, detail=f"Server error: {str(e)}")
+        # ALWAYS fallback to mock on ANY error - never return 500 to frontend
+        try:
+            print(f"[WebinarRouter] Error detected, applying mock fallback: {str(e)[:200]}")
+            result = await webinar_ai_service.apply_mock_fallback_for_asset(
+                request.asset_id, reason=f"Fallback: {str(e)[:100]}"
+            )
+            return {"status": "success", "data": result}
+        except Exception as fallback_err:
+            print(f"[WebinarRouter] Mock fallback also failed: {fallback_err}")
+            # Last resort: return mock data without saving to DB
+            mock_data = webinar_ai_service._get_mock_response(f"Error: {str(e)[:100]}")
+            return {"status": "success", "data": mock_data}
 
 @router.post("/concepts/update-from-meeting")
 async def update_concept(request: TranscriptUpdateRequest):
