@@ -135,7 +135,12 @@ export default function Concepts() {
       console.log("[Concepts] API response:", result);
 
       if (result.status === "success") {
-        toast.success("Generated 3 webinar concept options! Refreshing data...");
+        const isMockFallback = result?.data?.mock_fallback;
+        toast.success(
+          isMockFallback
+            ? "Generated 3 demo concepts (OpenAI quota exhausted - add billing or set MOCK_OPENAI_MODE)"
+            : "Generated 3 webinar concept options! Refreshing data..."
+        );
         // Invalidate query to refetch data from backend using our new hook
         queryClient.invalidateQueries({ queryKey: ["webinar-concepts"] });
 

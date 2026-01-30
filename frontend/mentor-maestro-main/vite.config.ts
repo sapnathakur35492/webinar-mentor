@@ -14,7 +14,7 @@ export default defineConfig(({ mode }) => ({
     },
     proxy: {
       "/api": {
-        target: "https://devwebinar.change20.no", // Pointing proxy to new backend domain too
+        target: "https://devwebinar.change20.no",
         changeOrigin: true,
         secure: false,
       },

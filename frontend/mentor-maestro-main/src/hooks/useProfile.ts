@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import axios from "axios";
 
 // API Base URL - ensure this matches your backend
-const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'}/mentors`;
+const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'https://devwebinar.change20.no/api'}/mentors`;
 
 export type PipelineStage =
   | "onboarding"
