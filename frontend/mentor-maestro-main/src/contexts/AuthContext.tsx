@@ -104,7 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem("token");
     localStorage.removeItem("user_data");
     setUser(null);
-    window.location.href = "/login";
+    window.location.href = "https://devui.change20.no/";
   };
 
   return (
