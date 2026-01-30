@@ -15,6 +15,7 @@ export default function Signup() {
     const [password, setPassword] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [showErrors, setShowErrors] = useState(false);
+    const [serverErrors, setServerErrors] = useState<Record<string, string>>({});
 
     const { signUp } = useAuth();
     const navigate = useNavigate();
@@ -22,6 +23,7 @@ export default function Signup() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setShowErrors(true);
+        setServerErrors({}); // Reset server errors
 
         if (!firstName || !lastName || !email || !password) {
             return;
@@ -36,7 +38,16 @@ export default function Signup() {
             toast.success("Konto opprettet!");
             navigate("/");
         } catch (error: any) {
-            toast.error(error.message || "Registrering feilet");
+            console.error("Signup error:", error);
+            const errorMessage = error.message || "Registrering feilet";
+
+            // Map common backend errors to fields
+            if (errorMessage.toLowerCase().includes("email") || errorMessage.toLowerCase().includes("user with this email")) {
+                setServerErrors(prev => ({ ...prev, email: "E-postadressen er allerede registrert" }));
+                // logic to focus field could go here
+            } else {
+                toast.error(errorMessage);
+            }
         } finally {
             setIsLoading(false);
         }
@@ -132,6 +143,9 @@ export default function Signup() {
                                 </div>
                                 {showErrors && !email && (
                                     <p className="text-destructive text-xs">Dette feltet er obligatorisk</p>
+                                )}
+                                {serverErrors.email && (
+                                    <p className="text-destructive text-xs">{serverErrors.email}</p>
                                 )}
                             </div>
 
