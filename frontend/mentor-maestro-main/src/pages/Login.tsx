@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, User, Lock } from "lucide-react";
 
 export default function Login() {
     const [email, setEmail] = useState("");
@@ -22,7 +22,6 @@ export default function Login() {
         setShowErrors(true);
 
         if (!email || !password) {
-            // toast.error("Vennligst fyll ut alle felt"); // Removed as per request
             return;
         }
 
@@ -31,7 +30,7 @@ export default function Login() {
             const { error } = await signIn(email, password);
             if (error) throw error;
 
-            toast.success("Velkommen tilbake!");
+            toast.success("Logget inn!");
             navigate("/");
         } catch (error: any) {
             toast.error(error.message || "Innlogging feilet");
@@ -41,49 +40,53 @@ export default function Login() {
     };
 
     return (
-        <div className="min-h-screen h-screen w-full relative flex items-center justify-center lg:justify-end overflow-hidden">
-            {/* Background Image - Exact match */}
+        <div className="min-h-screen w-full relative flex items-center justify-center py-8">
+            {/* Background Image */}
             <div
                 className="fixed inset-0 z-0 bg-cover bg-center bg-no-repeat"
                 style={{
                     backgroundImage: 'url("https://devui.change20.no/_next/static/media/change-l-bg.f38691a1.jpg")',
                 }}
-            >
-                {/* No overlay needed as per reference site */}
-            </div>
+            />
 
             {/* Login Card */}
-            <Card className="z-10 w-full max-w-[650px] bg-[rgb(48,61,54)] border-none text-white shadow-none relative rounded-[10px] lg:mr-24 my-auto">
-                <div className="px-[60px] py-[60px]">
-                    {/* Logo Section */}
-                    <div className="text-center mb-[40px]">
-                        <div className="flex justify-center mb-6">
-                            <img
-                                src="https://demo.devredorange.com/change20/wp-content/uploads/2025/10/CHANGE_logo_Light-240x143.png"
-                                alt="Change 2.0"
-                                className="w-[130px] h-auto object-contain"
-                            />
-                        </div>
-                        <h1 className="text-[24px] font-bold text-white mb-2">Logg inn som mentor</h1>
+            <Card className="z-10 w-full max-w-[500px] glass-card animate-fade-in font-poppins text-white rounded-xl mx-4">
+                <div className="px-10 py-10">
+                    {/* Logo */}
+                    <div className="flex justify-center mb-6">
+                        <img
+                            src="/logo.png"
+                            alt="Change 2.0"
+                            className="h-16"
+                        />
+                    </div>
+
+                    {/* Header */}
+                    <div className="text-center mb-8">
+                        <h1 className="text-2xl font-bold text-white mb-2">logge inn</h1>
+                        <p className="text-gray-400 text-sm">Logg inn for å fortsette til din konto</p>
                     </div>
 
                     <CardContent className="p-0">
-                        <form onSubmit={handleSubmit} className="space-y-6">
+                        <form onSubmit={handleSubmit} className="space-y-5">
                             {/* Email */}
                             <div className="space-y-2">
                                 <Label htmlFor="email" className="text-sm font-medium text-white">
                                     E-post
                                 </Label>
-                                <Input
-                                    id="email"
-                                    type="email"
-                                    placeholder="demo.doe@example.com"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    className={`h-[44px] bg-white text-gray-900 border border-slate-200 rounded-md focus:ring-2 focus:ring-[#096cd0] ${showErrors && !email ? "ring-2 ring-red-500" : ""}`}
-                                />
+                                <div className="relative">
+                                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                                    <Input
+                                        id="email"
+                                        type="email"
+                                        placeholder="demo.doe@example.com"
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                        className={`pl-10 h-12 bg-white/5 border-white/10 text-white placeholder:text-muted-foreground rounded-lg focus:border-primary focus:ring-1 focus:ring-primary transition-colors ${showErrors && !email ? "border-destructive ring-1 ring-destructive" : ""}`}
+                                    />
+                                </div>
                                 {showErrors && !email && (
-                                    <p className="text-red-400 text-xs mt-1">Dette feltet er påkrevd</p>
+                                    <p className="text-red-500 text-xs">Dette feltet er obligatorisk</p>
                                 )}
                             </div>
 
@@ -92,46 +95,52 @@ export default function Login() {
                                 <Label htmlFor="password" className="text-sm font-medium text-white">
                                     Passord
                                 </Label>
-                                <Input
-                                    id="password"
-                                    type="password"
-                                    placeholder="*********"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    className={`h-[44px] bg-white text-gray-900 border border-slate-200 rounded-md focus:ring-2 focus:ring-[#096cd0] ${showErrors && !password ? "ring-2 ring-red-500" : ""}`}
-                                />
+                                <div className="relative">
+                                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                                    <Input
+                                        id="password"
+                                        type="password"
+                                        placeholder="*** *** ****"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        className={`pl-10 h-12 bg-white/5 border-white/10 text-white placeholder:text-muted-foreground rounded-lg focus:border-primary focus:ring-1 focus:ring-primary transition-colors ${showErrors && !password ? "border-destructive ring-1 ring-destructive" : ""}`}
+                                    />
+                                </div>
                                 {showErrors && !password && (
-                                    <p className="text-red-400 text-xs mt-1">Dette feltet er påkrevd</p>
+                                    <p className="text-destructive text-xs">Dette feltet er obligatorisk</p>
                                 )}
                             </div>
 
                             {/* Forgot Password Link */}
-                            <div className="flex justify-end">
-                                <a href="#" className="text-sm text-white hover:underline transition-colors">
+                            <div className="text-right">
+                                <Link
+                                    to="/forgot-password"
+                                    className="text-sm text-gray-300 hover:text-white transition-colors"
+                                >
                                     glemt passord
-                                </a>
+                                </Link>
                             </div>
 
                             {/* Login Button */}
                             <Button
                                 type="submit"
                                 disabled={isLoading}
-                                className="w-full h-[48px] bg-[#85BF42] hover:bg-[#76aa3b] text-white font-semibold text-[16px] rounded-full shadow-md transition-all duration-300 mt-3"
+                                className="w-full h-12 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-base rounded-full shadow-lg transition-all duration-300"
                             >
                                 {isLoading ? (
-                                    <Loader2 className="w-6 h-6 animate-spin" />
+                                    <Loader2 className="w-5 h-5 animate-spin" />
                                 ) : (
                                     "Logg inn"
                                 )}
                             </Button>
 
-                            {/* Signup Link */}
+                            {/* Register Link */}
                             <div className="text-center mt-6">
-                                <p className="text-sm text-white">
-                                    Har ikke en konto?{" "}
+                                <p className="text-sm text-gray-300">
+                                    Har en konto?{" "}
                                     <Link
                                         to="/signup"
-                                        className="text-[#85BF42] hover:underline font-medium transition-colors"
+                                        className="text-primary hover:underline font-medium"
                                     >
                                         Registrer deg
                                     </Link>

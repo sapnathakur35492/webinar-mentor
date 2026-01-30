@@ -5,22 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, User, Mail, Lock } from "lucide-react";
 
 export default function Signup() {
     const [firstName, setFirstName] = useState("");
     const [lastName, setLastName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
-    const [country, setCountry] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [showErrors, setShowErrors] = useState(false);
 
@@ -31,7 +23,7 @@ export default function Signup() {
         e.preventDefault();
         setShowErrors(true);
 
-        if (!firstName || !lastName || !email || !password || !country) {
+        if (!firstName || !lastName || !email || !password) {
             return;
         }
 
@@ -51,23 +43,31 @@ export default function Signup() {
     };
 
     return (
-        <div className="min-h-screen w-full relative flex items-center justify-center lg:justify-end py-16">
+        <div className="min-h-screen w-full relative flex items-center justify-center py-8">
             {/* Background Image */}
             <div
                 className="fixed inset-0 z-0 bg-cover bg-center bg-no-repeat"
                 style={{
                     backgroundImage: 'url("https://devui.change20.no/_next/static/media/change-l-bg.f38691a1.jpg")',
                 }}
-            >
-            </div>
+            />
 
             {/* Signup Card */}
-            <Card className="z-10 w-full max-w-[580px] bg-[rgb(48,61,54)] border-none text-white shadow-none relative rounded-[10px] my-auto lg:mr-24">
-                <div className="px-[60px] py-[60px]">
-                    {/* Header Section - No Logo */}
-                    <div className="text-center mb-[30px]">
-                        <h1 className="text-[24px] font-bold text-white mb-1">Bli en mentor</h1>
-                        <p className="text-gray-300">Del kunnskapen din. Styrk neste generasjon</p>
+            <Card className="z-10 w-full max-w-[500px] glass-card animate-fade-in font-poppins text-white rounded-xl mx-4">
+                <div className="px-10 py-10">
+                    {/* Logo */}
+                    <div className="flex justify-center mb-6">
+                        <img
+                            src="/logo.png"
+                            alt="Change 2.0"
+                            className="h-16"
+                        />
+                    </div>
+
+                    {/* Header */}
+                    <div className="text-center mb-8">
+                        <h1 className="text-2xl font-bold text-white mb-2">Opprett konto</h1>
+                        <p className="text-gray-400 text-sm">Registrer deg for å komme i gang</p>
                     </div>
 
                     <CardContent className="p-0">
@@ -77,16 +77,19 @@ export default function Signup() {
                                 <Label htmlFor="firstName" className="text-sm font-medium text-white">
                                     Fornavn
                                 </Label>
-                                <Input
-                                    id="firstName"
-                                    type="text"
-                                    placeholder="Fornavn"
-                                    value={firstName}
-                                    onChange={(e) => setFirstName(e.target.value)}
-                                    className={`h-[44px] bg-white text-gray-900 border border-slate-200 rounded-md focus:ring-2 focus:ring-[#096cd0] ${showErrors && !firstName ? "ring-2 ring-red-500" : ""}`}
-                                />
+                                <div className="relative">
+                                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                                    <Input
+                                        id="firstName"
+                                        type="text"
+                                        placeholder="Fornavn"
+                                        value={firstName}
+                                        onChange={(e) => setFirstName(e.target.value)}
+                                        className={`pl-10 h-12 bg-white/5 border-white/10 text-white placeholder:text-muted-foreground rounded-lg focus:border-primary focus:ring-1 focus:ring-primary transition-colors ${showErrors && !firstName ? "border-destructive ring-1 ring-destructive" : ""}`}
+                                    />
+                                </div>
                                 {showErrors && !firstName && (
-                                    <p className="text-red-400 text-xs mt-1">Påkrevd</p>
+                                    <p className="text-destructive text-xs">Dette feltet er obligatorisk</p>
                                 )}
                             </div>
 
@@ -95,16 +98,19 @@ export default function Signup() {
                                 <Label htmlFor="lastName" className="text-sm font-medium text-white">
                                     Etternavn
                                 </Label>
-                                <Input
-                                    id="lastName"
-                                    type="text"
-                                    placeholder="Etternavn"
-                                    value={lastName}
-                                    onChange={(e) => setLastName(e.target.value)}
-                                    className={`h-[44px] bg-white text-gray-900 border border-slate-200 rounded-md focus:ring-2 focus:ring-[#096cd0] ${showErrors && !lastName ? "ring-2 ring-red-500" : ""}`}
-                                />
+                                <div className="relative">
+                                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                                    <Input
+                                        id="lastName"
+                                        type="text"
+                                        placeholder="Etternavn"
+                                        value={lastName}
+                                        onChange={(e) => setLastName(e.target.value)}
+                                        className={`pl-10 h-12 bg-white/5 border-white/10 text-white placeholder:text-muted-foreground rounded-lg focus:border-primary focus:ring-1 focus:ring-primary transition-colors ${showErrors && !lastName ? "border-destructive ring-1 ring-destructive" : ""}`}
+                                    />
+                                </div>
                                 {showErrors && !lastName && (
-                                    <p className="text-red-400 text-xs mt-1">Påkrevd</p>
+                                    <p className="text-destructive text-xs">Dette feltet er obligatorisk</p>
                                 )}
                             </div>
 
@@ -113,16 +119,19 @@ export default function Signup() {
                                 <Label htmlFor="email" className="text-sm font-medium text-white">
                                     E-post
                                 </Label>
-                                <Input
-                                    id="email"
-                                    type="email"
-                                    placeholder="demo.doe@example.com"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    className={`h-[44px] bg-white text-gray-900 border border-slate-200 rounded-md focus:ring-2 focus:ring-[#096cd0] ${showErrors && !email ? "ring-2 ring-red-500" : ""}`}
-                                />
+                                <div className="relative">
+                                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                                    <Input
+                                        id="email"
+                                        type="email"
+                                        placeholder="demo.doe@example.com"
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                        className={`pl-10 h-12 bg-white/5 border-white/10 text-white placeholder:text-muted-foreground rounded-lg focus:border-primary focus:ring-1 focus:ring-primary transition-colors ${showErrors && !email ? "border-destructive ring-1 ring-destructive" : ""}`}
+                                    />
+                                </div>
                                 {showErrors && !email && (
-                                    <p className="text-red-400 text-xs mt-1">Dette feltet er påkrevd</p>
+                                    <p className="text-destructive text-xs">Dette feltet er obligatorisk</p>
                                 )}
                             </div>
 
@@ -131,38 +140,19 @@ export default function Signup() {
                                 <Label htmlFor="password" className="text-sm font-medium text-white">
                                     Passord
                                 </Label>
-                                <Input
-                                    id="password"
-                                    type="password"
-                                    placeholder="*** *** ****"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    className={`h-[44px] bg-white text-gray-900 border border-slate-200 rounded-md focus:ring-2 focus:ring-[#096cd0] ${showErrors && !password ? "ring-2 ring-red-500" : ""}`}
-                                />
+                                <div className="relative">
+                                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                                    <Input
+                                        id="password"
+                                        type="password"
+                                        placeholder="*** *** ****"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        className={`pl-10 h-12 bg-white/5 border-white/10 text-white placeholder:text-muted-foreground rounded-lg focus:border-primary focus:ring-1 focus:ring-primary transition-colors ${showErrors && !password ? "border-destructive ring-1 ring-destructive" : ""}`}
+                                    />
+                                </div>
                                 {showErrors && !password && (
-                                    <p className="text-red-400 text-xs mt-1">Dette feltet er påkrevd</p>
-                                )}
-                            </div>
-
-                            {/* Country using Shadcn Select */}
-                            <div className="space-y-2">
-                                <Label htmlFor="country" className="text-sm font-medium text-white">
-                                    Land
-                                </Label>
-                                <Select onValueChange={setCountry} value={country}>
-                                    <SelectTrigger className={`w-full h-[44px] bg-white text-gray-900 border border-slate-200 rounded-md focus:ring-2 focus:ring-[#096cd0] ${showErrors && !country ? "ring-2 ring-red-500" : ""}`}>
-                                        <SelectValue placeholder="Velg land" />
-                                    </SelectTrigger>
-                                    <SelectContent className="bg-white">
-                                        <SelectItem value="NO">Norge</SelectItem>
-                                        <SelectItem value="SE">Sverige</SelectItem>
-                                        <SelectItem value="DK">Danmark</SelectItem>
-                                        <SelectItem value="US">United States</SelectItem>
-                                        <SelectItem value="Other">Annet</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                                {showErrors && !country && (
-                                    <p className="text-red-400 text-xs mt-1">Vennligst velg land</p>
+                                    <p className="text-destructive text-xs">Dette feltet er obligatorisk</p>
                                 )}
                             </div>
 
@@ -170,22 +160,22 @@ export default function Signup() {
                             <Button
                                 type="submit"
                                 disabled={isLoading}
-                                className="w-full h-[48px] bg-[#85BF42] hover:bg-[#76aa3b] text-white font-semibold text-[16px] rounded-full shadow-md transition-all duration-300 mt-4"
+                                className="w-full h-12 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-base rounded-full shadow-lg transition-all duration-300 mt-6"
                             >
                                 {isLoading ? (
-                                    <Loader2 className="w-6 h-6 animate-spin" />
+                                    <Loader2 className="w-5 h-5 animate-spin" />
                                 ) : (
                                     "Register"
                                 )}
                             </Button>
 
-                            {/* Divider/Login Link */}
+                            {/* Login Link */}
                             <div className="text-center mt-6">
-                                <p className="text-sm text-white">
-                                    Har en konto?{" "}
+                                <p className="text-sm text-gray-300">
+                                    Har en konto{" "}
                                     <Link
                                         to="/login"
-                                        className="text-[#85BF42] hover:underline font-medium transition-colors"
+                                        className="text-primary hover:underline font-medium"
                                     >
                                         Logg på
                                     </Link>
