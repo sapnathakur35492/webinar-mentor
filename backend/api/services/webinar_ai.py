@@ -141,14 +141,9 @@ class WebinarAIService:
             print(f"AI Gen Network Error: {e}")
             raise ValueError(f"OpenAI connection failed: {e}") from e
 
-    async def _apply_mock_concepts_and_return(self, asset: WebinarAsset, reason: str = "API error") -> dict:
-        """Apply mock concepts to asset and return response. Used for fallback when OpenAI fails."""
+    def _get_mock_response(self, reason: str = "API error") -> dict:
+        """Return mock concepts response dict (no DB)."""
         mock_concepts = self._get_mock_concepts()
-        asset.concepts_original = mock_concepts
-        asset.concepts_improved = mock_concepts
-        asset.concepts_evaluated = f"MOCK EVALUATION ({reason})"
-        await asset.save()
-        print(f"[WebinarAI] Asset saved with MOCK concepts (reason: {reason})")
         return {
             "original": "MOCK GENERATION - OpenAI quota/API issue. Using demo concepts.",
             "evaluation": "MOCK EVALUATION",
@@ -157,6 +152,26 @@ class WebinarAIService:
             "mock_fallback": True,
             "mock_reason": reason
         }
+
+    async def _apply_mock_concepts_and_return(self, asset: WebinarAsset, reason: str = "API error") -> dict:
+        """Apply mock concepts to asset and return response. Used for fallback when OpenAI fails."""
+        mock_concepts = self._get_mock_concepts()
+        asset.concepts_original = mock_concepts
+        asset.concepts_improved = mock_concepts
+        asset.concepts_evaluated = f"MOCK EVALUATION ({reason})"
+        try:
+            await asset.save()
+            print(f"[WebinarAI] Asset saved with MOCK concepts (reason: {reason})")
+        except Exception as save_err:
+            print(f"[WebinarAI] WARNING: Could not save mock concepts to DB: {save_err}. Returning anyway.")
+        return self._get_mock_response(reason)
+
+    async def apply_mock_fallback_for_asset(self, asset_id: str, reason: str = "429 fallback") -> dict:
+        """Public: Get asset, apply mock concepts, return. For router-level fallback."""
+        asset = await WebinarAsset.get(asset_id)
+        if not asset:
+            raise ValueError("Asset not found")
+        return await self._apply_mock_concepts_and_return(asset, reason)
 
     async def generate_concepts_chain(self, asset_id: str) -> dict:
         asset = await WebinarAsset.get(asset_id)

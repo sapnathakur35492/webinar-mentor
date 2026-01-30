@@ -93,6 +93,12 @@ async def get_job_status(job_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+def _is_openai_quota_error(e: Exception) -> bool:
+    """Check if error is OpenAI 429/quota related."""
+    s = str(e).lower()
+    return "429" in s or "quota" in s or "insufficient_quota" in s or "rate limit" in s
+
+
 @router.post("/concepts/generate")
 async def generate_concepts(request: GenerateRequest):
     try:
@@ -102,6 +108,19 @@ async def generate_concepts(request: GenerateRequest):
         import traceback
         traceback.print_exc()
         print(f"ERROR in generate_concepts: {e}")
+        # Router-level fallback: on OpenAI 429/quota, return mock concepts (live server safety net)
+        if _is_openai_quota_error(e):
+            try:
+                print(f"[WebinarRouter] OpenAI quota error detected, applying mock fallback")
+                result = await webinar_ai_service.apply_mock_fallback_for_asset(
+                    request.asset_id, reason="429 quota (router fallback)"
+                )
+                return {"status": "success", "data": result}
+            except Exception as fallback_err:
+                print(f"[WebinarRouter] Mock fallback also failed: {fallback_err}")
+                # Last resort: return mock data without saving to DB
+                mock_data = webinar_ai_service._get_mock_response("429 - save failed")
+                return {"status": "success", "data": mock_data}
         raise HTTPException(status_code=500, detail=f"Server error: {str(e)}")
 
 @router.post("/concepts/update-from-meeting")
