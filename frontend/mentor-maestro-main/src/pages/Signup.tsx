@@ -34,7 +34,6 @@ export default function Signup() {
             const { error } = await signUp(email, password, fullName);
             if (error) throw error;
 
-            toast.success("Konto opprettet!");
             navigate("/");
         } catch (error: any) {
             console.error("Signup error:", error);

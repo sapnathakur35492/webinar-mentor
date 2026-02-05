@@ -29,7 +29,6 @@ export default function Login() {
             const { error } = await signIn(email, password);
             if (error) throw error;
 
-            toast.success("Logget inn!");
             navigate("/");
         } catch (error: any) {
             toast.error(error.message || "Innlogging feilet");
