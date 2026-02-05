@@ -644,7 +644,57 @@ export default function Concepts() {
                       {concept.secret_structure && (
                         <div>
                           <label className="text-xs text-muted-foreground uppercase tracking-wide">3 Belief Shifts / Secrets</label>
-                          <p className="text-foreground mt-1 whitespace-pre-wrap">{concept.secret_structure}</p>
+                          <div className="mt-2 space-y-3">
+                            {(() => {
+                              try {
+                                const beliefs = typeof concept.secret_structure === 'string'
+                                  ? JSON.parse(concept.secret_structure)
+                                  : concept.secret_structure;
+
+                                if (Array.isArray(beliefs)) {
+                                  return beliefs.map((belief: any, idx: number) => (
+                                    <div key={idx} className="bg-muted/50 rounded-lg p-4 border border-border">
+                                      <div className="flex items-center gap-2 mb-3">
+                                        <span className="flex items-center justify-center h-6 w-6 rounded-full bg-primary/20 text-primary text-xs font-semibold">
+                                          {idx + 1}
+                                        </span>
+                                        <span className="font-medium text-foreground">Belief Shift {idx + 1}</span>
+                                      </div>
+                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        {belief.assumption && (
+                                          <div className="bg-destructive/5 rounded-md p-3">
+                                            <span className="text-xs text-destructive font-medium uppercase">Old Assumption</span>
+                                            <p className="text-sm text-foreground mt-1">"{belief.assumption}"</p>
+                                          </div>
+                                        )}
+                                        {belief.belief && (
+                                          <div className="bg-success/5 rounded-md p-3">
+                                            <span className="text-xs text-success font-medium uppercase">New Belief</span>
+                                            <p className="text-sm text-foreground mt-1">"{belief.belief}"</p>
+                                          </div>
+                                        )}
+                                        {belief.story && (
+                                          <div className="bg-primary/5 rounded-md p-3">
+                                            <span className="text-xs text-primary font-medium uppercase">Story</span>
+                                            <p className="text-sm text-foreground mt-1">{belief.story}</p>
+                                          </div>
+                                        )}
+                                        {belief.transformation && (
+                                          <div className="bg-warning/5 rounded-md p-3">
+                                            <span className="text-xs text-warning font-medium uppercase">Transformation</span>
+                                            <p className="text-sm text-foreground mt-1">{belief.transformation}</p>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ));
+                                }
+                                return <p className="text-foreground mt-1 whitespace-pre-wrap">{concept.secret_structure}</p>;
+                              } catch {
+                                return <p className="text-foreground mt-1 whitespace-pre-wrap">{concept.secret_structure}</p>;
+                              }
+                            })()}
+                          </div>
                         </div>
                       )}
 

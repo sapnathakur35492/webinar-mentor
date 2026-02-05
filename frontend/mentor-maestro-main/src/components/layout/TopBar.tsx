@@ -1,51 +1,74 @@
-import { Bell, Search, Plus, Sparkles } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { useNavigate } from "react-router-dom";
-import { toast } from "sonner";
+import { useState, useRef, useEffect } from "react";
+import { LogOut } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useProfile } from "@/hooks/useProfile";
 
 export function TopBar() {
-  const navigate = useNavigate();
+  const { signOut, user } = useAuth();
+  const { profile } = useProfile();
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const handleNewMentor = () => {
-    // Clear any existing session data and redirect to setup
-    localStorage.removeItem("current_asset_id");
-    toast.success("Starting new mentor setup!");
-    navigate("/setup");
-  };
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   return (
-    <header className="sticky top-0 z-30 flex h-20 items-center justify-between border-b border-gray-100 bg-white/80 backdrop-blur-xl px-8">
-      <div className="flex items-center gap-4">
-        <div className="relative group">
-          <div className="absolute inset-0 bg-gradient-to-r from-green-500/10 to-emerald-500/10 rounded-xl opacity-0 group-focus-within:opacity-100 transition-opacity" />
-          <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400 group-focus-within:text-green-500 transition-colors" />
-          <Input
-            placeholder="Search mentors, documents..."
-            className="w-96 h-12 bg-gray-50 border-0 pl-12 rounded-xl text-gray-900 placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-green-500/20 focus-visible:bg-white transition-all"
-          />
-        </div>
-      </div>
-
-      <div className="flex items-center gap-4">
-        {/* Notification Bell with badge */}
-        <button className="relative p-3 rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all">
-          <Bell className="h-5 w-5" />
-          <span className="absolute top-2 right-2 w-2 h-2 bg-green-500 rounded-full ring-2 ring-white" />
+    <header
+      className="sticky top-0 z-30 flex h-14 items-center justify-end border-b border-white/5 px-4 md:px-6"
+      style={{ backgroundColor: '#0d1f1a' }}
+    >
+      {/* Right Side - User Profile with Dropdown */}
+      <div className="relative" ref={dropdownRef}>
+        <button
+          onClick={() => setShowDropdown(!showDropdown)}
+          className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-white/5 transition-all"
+          style={{ backgroundColor: showDropdown ? 'rgba(255,255,255,0.05)' : 'transparent' }}
+        >
+          <div
+            className="flex items-center justify-center h-9 w-9 rounded-full text-white font-semibold text-sm border-2 border-[#3bba69]"
+            style={{ backgroundColor: 'transparent' }}
+          >
+            {profile?.full_name?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || "U"}
+          </div>
+          <span className="text-sm text-white hidden sm:inline">
+            {user?.email || "user@example.com"}
+          </span>
+          <svg className={`h-4 w-4 text-white/60 transition-transform duration-200 ${showDropdown ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
         </button>
 
-        {/* New Mentor Button - Premium */}
-        <Button
-          onClick={handleNewMentor}
-          className="group relative gap-2 h-12 px-6 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-400 hover:to-emerald-400 text-white font-semibold rounded-xl shadow-lg shadow-green-500/30 hover:shadow-green-500/50 transition-all duration-300 hover:scale-105 overflow-hidden"
-        >
-          {/* Shine effect */}
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
-
-          <Plus className="h-5 w-5 relative z-10" />
-          <span className="relative z-10">New Mentor</span>
-          <Sparkles className="h-4 w-4 relative z-10 text-white/70" />
-        </Button>
+        {/* Dropdown Menu - Clean simple design matching reference */}
+        {showDropdown && (
+          <div
+            className="absolute right-0 top-full mt-2 min-w-[180px] rounded-xl border border-white/10 shadow-2xl overflow-hidden"
+            style={{ backgroundColor: '#142721' }}
+          >
+            <button
+              onClick={() => {
+                signOut();
+                setShowDropdown(false);
+              }}
+              className="w-full flex items-center justify-between px-5 py-4 text-white/90 hover:bg-white/5 transition-all group"
+            >
+              <span className="text-base font-medium">Logout</span>
+              <div
+                className="w-10 h-6 rounded-full flex items-center justify-end pr-1 transition-all"
+                style={{ backgroundColor: '#3bba69' }}
+              >
+                <div className="w-4 h-4 rounded-full bg-white"></div>
+              </div>
+            </button>
+          </div>
+        )}
       </div>
     </header>
   );

@@ -28,6 +28,12 @@ yarn-error.log*
 Thumbs.db
 # Environment variables
 .env
+.env.local
+.env.*.local
+backend/.env
+backend/.env.example
+frontend/.env
+frontend/mentor-maestro-main/.env
 
 # Python cache
 __pycache__/

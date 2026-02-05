@@ -165,7 +165,7 @@ export default function Emails() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-[#1a3c1a]">Email Sequences</h1>
+            <h1 className="text-3xl font-bold text-white">Email Sequences</h1>
             <p className="text-muted-foreground mt-1">
               Generate high-converting email campaigns using your webinar structure.
             </p>
@@ -207,15 +207,15 @@ export default function Emails() {
             const status = latestSequence?.status ? statusConfig[latestSequence.status] : null;
 
             return (
-              <div key={type.id} className="bg-white rounded-xl border border-border overflow-hidden hover:shadow-md transition-all">
-                <div className="p-6 border-b border-border flex justify-between items-start">
+              <div key={type.id} className="rounded-xl border border-white/10 overflow-hidden hover:border-[#3bba69]/30 transition-all" style={{ backgroundColor: '#142721' }}>
+                <div className="p-6 border-b border-white/10 flex justify-between items-start">
                   <div className="flex items-center gap-4">
                     <div className={cn("rounded-lg p-3", type.color)}>
                       <Mail className="h-6 w-6" />
                     </div>
                     <div>
-                      <h3 className="font-bold text-gray-900">{type.label}</h3>
-                      <p className="text-sm text-gray-500">{type.description}</p>
+                      <h3 className="font-bold text-white">{type.label}</h3>
+                      <p className="text-sm text-white/60">{type.description}</p>
                     </div>
                   </div>
                 </div>
@@ -231,7 +231,7 @@ export default function Emails() {
                         </div>
                       )}
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-gray-600">
+                        <span className="text-sm font-medium text-white/70">
                           {latestSequence.email_count || 0} emails generated
                         </span>
                         {status && (
@@ -241,7 +241,7 @@ export default function Emails() {
                           </Badge>
                         )}
                       </div>
-                      <p className="text-xs text-gray-400">
+                      <p className="text-xs text-white/40">
                         Last updated {formatDistanceToNow(new Date(latestSequence.updated_at), { addSuffix: true })}
                       </p>
                       <div className="flex gap-3 pt-2">
@@ -260,7 +260,7 @@ export default function Emails() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="text-gray-400 hover:text-[#1a3c1a]"
+                          className="text-white/40 hover:text-[#3bba69]"
                           onClick={() => handleRegenerate(type.id)}
                           disabled={generatingType === type.id}
                           title="Regenerate"

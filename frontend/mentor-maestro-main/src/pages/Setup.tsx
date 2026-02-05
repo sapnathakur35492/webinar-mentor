@@ -94,11 +94,11 @@ export default function Setup() {
 
     if (hasError) {
       setErrors(newErrors);
-      toast.error("Please fill in all required fields to proceed");
+      // No popup toast - just show "Required" text in red
       setIsSaving(false);
 
       // FIX: Scroll to first error for better UX
-      const firstError = document.querySelector(".border-red-500");
+      const firstError = document.querySelector(".required-error");
       if (firstError) {
         firstError.scrollIntoView({ behavior: "smooth", block: "center" });
       }
@@ -128,7 +128,10 @@ export default function Setup() {
     // In a full version, we might support multiple files
     const file = files[0];
     setSelectedFile(file);
-    toast.success(`File selected: ${file.name}`);
+    toast.info(`📄 ${file.name}`, {
+      description: "File ready to upload! Click 'Generate Magic' to proceed.",
+      duration: 5000,
+    });
   };
 
   const handleCompleteSetup = async () => {
@@ -255,89 +258,95 @@ export default function Setup() {
     <MainLayout>
       {/* MOBILE RESPONSIVE WRAPPER: Added pb-24 for bottom bar clearance */}
       <div className="max-w-5xl mx-auto space-y-8 pb-32">
-        {/* Modern Step Indicator */}
+        {/* Modern Step Indicator - Dark Theme */}
         <div className="relative pt-4 px-4 sm:px-0">
-          <div className="absolute top-1/2 left-0 w-full h-1 bg-gray-100 -z-10 rounded-full" />
+          {/* Background Line */}
+          <div className="absolute top-[calc(50%-1px)] left-[120px] right-[120px] h-[2px] bg-white/10" />
+          {/* Progress Line */}
           <div
-            className="absolute top-1/2 left-0 h-1 bg-primary -z-10 rounded-full transition-all duration-500"
-            style={{ width: step === 1 ? '33%' : '80%' }}
+            className="absolute top-[calc(50%-1px)] left-[120px] h-[2px] transition-all duration-500"
+            style={{
+              width: step === 1 ? 'calc(50% - 120px)' : 'calc(100% - 240px)',
+              backgroundColor: '#3bba69'
+            }}
           />
           <div className="flex justify-between max-w-2xl mx-auto">
+            {/* Profile Step */}
             <div className={cn(
-              "flex flex-col items-center gap-2 px-4 py-2 rounded-xl transition-all duration-300 backdrop-blur-sm",
-              step === 1 ? "scale-110" : "opacity-70"
+              "flex flex-col items-center gap-2 px-4 py-2 transition-all duration-300",
+              step === 1 ? "scale-105" : ""
             )}>
               <div className={cn(
-                "h-10 w-10 rounded-full flex items-center justify-center shadow-lg transition-colors duration-300",
-                step >= 1 ? "bg-primary text-white" : "bg-white text-gray-400 border border-gray-200"
+                "h-12 w-12 rounded-full flex items-center justify-center transition-colors duration-300 border-2",
+                step >= 1 ? "bg-[#3bba69] border-[#3bba69] text-white" : "bg-transparent border-white/20 text-white/50"
               )}>
                 <User className="h-5 w-5" />
               </div>
-              <span className={cn("font-semibold text-sm hidden sm:block", step >= 1 ? "text-primary" : "text-gray-400")}>Profile</span>
+              <span className={cn("font-medium text-sm", step >= 1 ? "text-[#3bba69]" : "text-white/50")}>Profile</span>
             </div>
 
+            {/* Documents Step */}
             <div className={cn(
-              "flex flex-col items-center gap-2 px-4 py-2 rounded-xl transition-all duration-300 backdrop-blur-sm",
-              step === 2 ? "scale-110" : "opacity-70"
+              "flex flex-col items-center gap-2 px-4 py-2 transition-all duration-300",
+              step === 2 ? "scale-105" : ""
             )}>
               <div className={cn(
-                "h-10 w-10 rounded-full flex items-center justify-center shadow-lg transition-colors duration-300",
-                step >= 2 ? "bg-primary text-white" : "bg-white text-gray-400 border border-gray-200"
+                "h-12 w-12 rounded-full flex items-center justify-center transition-colors duration-300 border-2",
+                step >= 2 ? "bg-[#3bba69] border-[#3bba69] text-white" : "bg-transparent border-white/20 text-white/50"
               )}>
                 <FolderOpen className="h-5 w-5" />
               </div>
-              <span className={cn("font-semibold text-sm hidden sm:block", step >= 2 ? "text-primary" : "text-gray-400")}>Documents</span>
+              <span className={cn("font-medium text-sm", step >= 2 ? "text-[#3bba69]" : "text-white/50")}>Documents</span>
             </div>
 
-            <div className="flex flex-col items-center gap-2 px-4 py-2 rounded-xl opacity-60 backdrop-blur-sm">
-              <div className="h-10 w-10 rounded-full bg-white text-gray-400 border border-gray-200 flex items-center justify-center shadow-lg">
+            {/* AI Magic Step */}
+            <div className="flex flex-col items-center gap-2 px-4 py-2">
+              <div className="h-12 w-12 rounded-full bg-transparent border-2 border-white/20 text-white/50 flex items-center justify-center">
                 <Sparkles className="h-5 w-5" />
               </div>
-              <span className="font-semibold text-sm hidden sm:block text-gray-400">AI Magic</span>
+              <span className="font-medium text-sm text-white/50">AI Magic</span>
             </div>
           </div>
         </div>
 
         {/* Step 1: Onboarding Profile */}
         {step === 1 && (
-          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 px-4 sm:px-0">
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 px-4 sm:px-0">
             <div className="text-center max-w-2xl mx-auto">
-              <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Complete Your Profile</h1>
-              <p className="text-gray-500 mt-2 text-lg">
+              <h1 className="text-2xl font-bold text-white tracking-tight">Complete Your Profile</h1>
+              <p className="text-white/60 mt-2">
                 The more details you share, the better Change 2.0 can understand your unique voice and value.
               </p>
             </div>
 
-            {/* Progress Card */}
-            <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-xl shadow-gray-100/50 relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+            {/* Progress Card - Dark Theme */}
+            <div className="rounded-xl p-5 border border-white/10" style={{ backgroundColor: '#142721' }}>
 
-              <div className="flex items-center justify-between mb-3 relative z-10">
+
+              <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-semibold text-gray-700">Profile Strength</span>
+                  <span className="text-sm font-medium text-white">Profile Strength</span>
                   <span className={cn(
                     "text-xs px-2 py-0.5 rounded-full font-medium",
-                    step1Progress < 30 ? "bg-red-100 text-red-600" :
-                      step1Progress < 70 ? "bg-yellow-100 text-yellow-600" :
-                        "bg-green-100 text-green-600"
+                    step1Progress < 30 ? "bg-red-500/20 text-red-400" :
+                      step1Progress < 70 ? "bg-yellow-500/20 text-yellow-400" :
+                        "bg-green-500/20 text-green-400"
                   )}>
                     {step1Progress < 30 ? "Needs Work" : step1Progress < 70 ? "Getting There" : "Excellent"}
                   </span>
                 </div>
-                <span className="text-lg font-bold text-primary">{step1Progress}%</span>
+                <span className="text-lg font-bold text-[#3bba69]">{step1Progress}%</span>
               </div>
-              <div className="h-3 w-full rounded-full bg-gray-100 overflow-hidden relative z-10">
+              <div className="h-2 w-full rounded-full bg-white/10 overflow-hidden">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-primary to-primary/80 transition-all duration-700 ease-out relative"
-                  style={{ width: `${step1Progress}%` }}
-                >
-                  <div className="absolute top-0 left-0 w-full h-full bg-white/20 animate-pulse-slow" />
-                </div>
+                  className="h-full rounded-full transition-all duration-700 ease-out"
+                  style={{ width: `${step1Progress}%`, backgroundColor: '#3bba69' }}
+                />
               </div>
             </div>
 
-            {/* Form */}
-            <div className="grid grid-cols-1 gap-6">
+            {/* Form - Dark Theme */}
+            <div className="grid grid-cols-1 gap-4">
               {onboardingFields.map((field) => {
                 const Icon = field.icon;
                 const value = getValue(field.key);
@@ -348,29 +357,30 @@ export default function Setup() {
                   <div
                     key={field.key}
                     className={cn(
-                      "bg-white rounded-xl p-6 border transition-all duration-200 group hover:shadow-lg",
-                      isError ? "border-red-200 shadow-red-50" : "border-gray-100 shadow-sm",
-                      isFilled && "border-green-100"
+                      "rounded-xl p-5 border transition-all duration-200",
+                      "border-white/10",
+                      isFilled && "border-[#3bba69]/30",
+                      isError && "required-error"
                     )}
+                    style={{ backgroundColor: '#142721' }}
                   >
-                    <div className="flex items-start gap-4">
+                    <div className="flex items-start gap-3">
                       <div className={cn(
-                        "rounded-xl p-3 shrink-0 transition-colors hidden sm:flex",
-                        isFilled ? "bg-green-50 text-green-600" : "bg-gray-50 text-gray-400 group-hover:text-primary group-hover:bg-primary/5"
+                        "rounded-lg p-2 shrink-0 hidden sm:flex",
+                        isFilled ? "bg-[#3bba69]/20 text-[#3bba69]" : "bg-white/5 text-white/40"
                       )}>
-                        {isFilled ? <CheckCircle className="h-6 w-6" /> : <Icon className="h-6 w-6" />}
+                        {isFilled ? <CheckCircle className="h-5 w-5" /> : <Icon className="h-5 w-5" />}
                       </div>
 
-                      <div className="flex-1 space-y-3">
+                      <div className="flex-1 space-y-2">
                         <div>
-                          <Label className="text-gray-900 font-semibold text-base flex items-center gap-2">
-                            {/* Mobile Icon */}
-                            <span className="sm:hidden text-primary"><Icon className="h-4 w-4" /></span>
+                          <Label className="text-white font-medium text-sm flex items-center gap-2">
+                            <span className="sm:hidden text-[#3bba69]"><Icon className="h-4 w-4" /></span>
                             {field.label}
-                            {isError && <span className="text-red-500 text-xs font-normal animate-pulse">* Required</span>}
+                            {isError && <span className="text-red-400 text-xs font-normal">* Required</span>}
                           </Label>
                           {field.description && (
-                            <p className="text-sm text-gray-500 mt-1">
+                            <p className="text-xs text-white/40 mt-0.5">
                               {field.description}
                             </p>
                           )}
@@ -381,20 +391,14 @@ export default function Setup() {
                             value={value}
                             onChange={(e) => handleChange(field.key, e.target.value)}
                             placeholder={field.placeholder}
-                            className={cn(
-                              "h-12 bg-gray-50 border-gray-200 focus:bg-white transition-all text-base text-gray-900",
-                              isError && "border-red-300 focus-visible:ring-red-200 bg-red-50/30"
-                            )}
+                            className="h-10 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:border-[#3bba69] focus:ring-1 focus:ring-[#3bba69] text-sm"
                           />
                         ) : (
                           <Textarea
                             value={value}
                             onChange={(e) => handleChange(field.key, e.target.value)}
                             placeholder={field.placeholder}
-                            className={cn(
-                              "min-h-[120px] bg-gray-50 border-gray-200 focus:bg-white transition-all resize-none text-base leading-relaxed text-gray-900",
-                              isError && "border-red-300 focus-visible:ring-red-200 bg-red-50/30"
-                            )}
+                            className="min-h-[80px] bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:border-[#3bba69] focus:ring-1 focus:ring-[#3bba69] resize-none text-sm"
                           />
                         )}
                       </div>
@@ -404,45 +408,47 @@ export default function Setup() {
               })}
             </div>
 
-            {/* Actions: Fixed at bottom */}
-            <div className="fixed bottom-0 left-0 right-0 z-50 p-4 bg-white/90 backdrop-blur-lg border-t border-gray-200 shadow-[0_-5px_15px_-5px_rgba(0,0,0,0.1)] sm:relative sm:border-0 sm:shadow-none sm:bg-transparent sm:bottom-auto sm:p-0">
-              <div className="max-w-5xl mx-auto flex justify-end">
-                <Button
-                  onClick={handleSaveStep1}
-                  disabled={isSaving}
-                  size="lg"
-                  className="w-full sm:w-auto pl-8 pr-6 h-14 bg-primary hover:bg-primary/90 text-white font-bold text-lg rounded-xl shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all hover:scale-[1.02]"
-                >
-                  {isSaving ? "Saving..." : "Continue to Documents"}
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-              </div>
+            {/* Actions */}
+            <div className="flex justify-end pt-4">
+              <Button
+                onClick={handleSaveStep1}
+                disabled={isSaving}
+                size="lg"
+                className="px-8 h-12 text-white font-semibold rounded-full transition-all hover:scale-105"
+                style={{ background: 'linear-gradient(135deg, #3bba69, #279b65)' }}
+              >
+                {isSaving ? "Saving..." : "Continue to Documents"}
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
             </div>
           </div>
         )}
 
         {/* Step 2: Documents */}
         {step === 2 && (
-          <div className="space-y-8 max-w-3xl mx-auto animate-in fade-in slide-in-from-right-8 duration-500 px-4 sm:px-0">
+          <div className="space-y-6 max-w-3xl mx-auto animate-in fade-in slide-in-from-right-8 duration-500 px-4 sm:px-0">
             <div className="text-center">
-              <h1 className="text-3xl font-bold text-gray-900">Upload Your Materials</h1>
-              <p className="text-gray-500 mt-2 text-lg">
+              <h1 className="text-2xl font-bold text-white">Upload Your Materials</h1>
+              <p className="text-white/60 mt-2">
                 Add documents to help Change 2.0 understand your business better.
               </p>
             </div>
 
-            {/* Upload Zone */}
+            {/* Upload Zone - Dark Theme */}
             <label className="block cursor-pointer group">
-              <div className="bg-white rounded-2xl border-2 border-dashed border-gray-200 p-12 text-center transition-all duration-300 group-hover:border-primary group-hover:bg-primary/5 group-hover:scale-[1.01] shadow-sm">
+              <div
+                className="rounded-xl border-2 border-dashed border-white/20 p-10 text-center transition-all duration-300 hover:border-[#3bba69]/50"
+                style={{ backgroundColor: '#142721' }}
+              >
                 <div className="flex flex-col items-center gap-4">
-                  <div className="h-20 w-20 rounded-full bg-blue-50 flex items-center justify-center group-hover:bg-white group-hover:shadow-md transition-all">
-                    <Upload className="h-10 w-10 text-primary" />
+                  <div className="h-16 w-16 rounded-full bg-[#3bba69]/20 flex items-center justify-center">
+                    <Upload className="h-8 w-8 text-[#3bba69]" />
                   </div>
                   <div>
-                    < p className="text-xl font-semibold text-gray-900">
+                    <p className="text-lg font-semibold text-white">
                       {isUploading ? "Uploading..." : "Click to upload files"}
                     </p>
-                    <p className="text-gray-500 mt-2">
+                    <p className="text-white/50 mt-1 text-sm">
                       PDFs, DOCX, or key text files
                     </p>
                   </div>
@@ -457,76 +463,76 @@ export default function Setup() {
               />
             </label>
 
-            {/* Uploaded Files List */}
+            {/* Uploaded Files List - Dark Theme */}
             {documents.length > 0 && (
-              <div className="space-y-3">
-                <h3 className="font-semibold text-gray-900 px-1">Uploaded Files</h3>
+              <div className="space-y-2">
+                <h3 className="font-medium text-white text-sm px-1">Uploaded Files</h3>
                 {documents.map((doc) => (
                   <div
                     key={doc.id}
-                    className="flex items-center gap-4 p-4 rounded-xl bg-white border border-gray-100 shadow-sm hover:shadow-md transition-all"
+                    className="flex items-center gap-3 p-3 rounded-lg border border-white/10"
+                    style={{ backgroundColor: '#142721' }}
                   >
-                    <div className="h-10 w-10 rounded-lg bg-red-50 flex items-center justify-center shrink-0">
-                      <FileText className="h-5 w-5 text-red-500" />
+                    <div className="h-8 w-8 rounded-lg bg-red-500/20 flex items-center justify-center shrink-0">
+                      <FileText className="h-4 w-4 text-red-400" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">{doc.name}</p>
-                      <p className="text-xs text-gray-500">{doc.file_size}</p>
+                      <p className="text-sm font-medium text-white truncate">{doc.name}</p>
+                      <p className="text-xs text-white/50">{doc.file_size}</p>
                     </div>
-                    <Button variant="ghost" size="icon" className="text-gray-400 hover:text-red-500">
-                      <CheckCircle className="h-5 w-5 text-green-500" />
-                    </Button>
+                    <CheckCircle className="h-5 w-5 text-[#3bba69]" />
                   </div>
                 ))}
               </div>
             )}
 
-            {/* Skip Option */}
-            <div className="bg-blue-50/50 rounded-xl p-5 border border-blue-100 flex items-start gap-4">
-              <div className="bg-blue-100 p-2 rounded-lg shrink-0">
-                <Lightbulb className="h-5 w-5 text-blue-600" />
-              </div>
-              <div>
-                <h4 className="font-semibold text-blue-900 text-sm">Pro Tip</h4>
-                <p className="text-sm text-blue-700 mt-1 leading-relaxed">
-                  You can skip this step if you don't have documents ready. Our AI will generate concepts based purely on your profile answers from Step 1.
-                </p>
+            {/* Pro Tip - Dark Theme */}
+            <div className="rounded-lg p-4 border border-[#3bba69]/20" style={{ backgroundColor: 'rgba(59, 186, 105, 0.1)' }}>
+              <div className="flex items-start gap-3">
+                <div className="bg-[#3bba69]/20 p-2 rounded-lg shrink-0">
+                  <Lightbulb className="h-4 w-4 text-[#3bba69]" />
+                </div>
+                <div>
+                  <h4 className="font-medium text-[#3bba69] text-sm">Pro Tip</h4>
+                  <p className="text-sm text-white/60 mt-1">
+                    You can skip this step if you don't have documents ready. Our AI will generate concepts based purely on your profile answers from Step 1.
+                  </p>
+                </div>
               </div>
             </div>
 
-            {/* Actions: Fixed at bottom */}
-            <div className="fixed bottom-0 left-0 right-0 z-50 p-4 bg-white/90 backdrop-blur-lg border-t border-gray-200 shadow-[0_-5px_15px_-5px_rgba(0,0,0,0.1)] sm:relative sm:border-0 sm:shadow-none sm:bg-transparent sm:bottom-auto sm:p-0">
-              <div className="max-w-3xl mx-auto flex justify-between items-center">
-                <Button
-                  variant="ghost"
-                  onClick={() => setStep(1)}
-                  className="text-gray-500 hover:text-gray-900 hover:bg-gray-100"
-                >
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Back to Profile
-                </Button>
+            {/* Actions */}
+            <div className="flex justify-between items-center pt-4">
+              <Button
+                variant="ghost"
+                onClick={() => setStep(1)}
+                className="text-white/60 hover:text-white hover:bg-white/5"
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to Profile
+              </Button>
 
-                <Button
-                  onClick={handleCompleteSetup}
-                  disabled={isSaving}
-                  className="relative overflow-hidden bg-gradient-to-r from-primary to-[#7aaf3a] hover:from-[#7aaf3a] hover:to-primary text-white shadow-xl shadow-primary/20 hover:shadow-primary/30 transition-all duration-300 h-14 px-8 rounded-full font-bold text-lg hover:scale-105"
-                >
-                  {isSaving && (
-                    <div
-                      className="absolute left-0 top-0 bottom-0 bg-white/20 transition-all duration-300 ease-out"
-                      style={{ width: `${uploadProgress}%` }}
-                    />
-                  )}
-                  {isSaving ? (
-                    <span className="flex items-center gap-2 relative z-10">
-                      {uploadProgress > 0 ? `Uploading ${uploadProgress}%` : "Processing"}
-                      <Rocket className="h-5 w-5 animate-bounce" />
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-2 relative z-10">Generate Magic <Sparkles className="h-5 w-5" /></span>
-                  )}
-                </Button>
-              </div>
+              <Button
+                onClick={handleCompleteSetup}
+                disabled={isSaving}
+                className="h-12 px-8 text-white font-semibold rounded-full transition-all hover:scale-105"
+                style={{ background: 'linear-gradient(135deg, #3bba69, #279b65)' }}
+              >
+                {isSaving && (
+                  <div
+                    className="absolute left-0 top-0 bottom-0 bg-white/20 transition-all duration-300 ease-out"
+                    style={{ width: `${uploadProgress}%` }}
+                  />
+                )}
+                {isSaving ? (
+                  <span className="flex items-center gap-2 relative z-10">
+                    {uploadProgress > 0 ? `Uploading ${uploadProgress}%` : "Processing"}
+                    <Rocket className="h-5 w-5 animate-bounce" />
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2 relative z-10">Generate Magic <Sparkles className="h-5 w-5" /></span>
+                )}
+              </Button>
             </div>
           </div>
         )}
@@ -534,3 +540,4 @@ export default function Setup() {
     </MainLayout>
   );
 }
+

@@ -14,7 +14,7 @@ export default defineConfig(({ mode }) => ({
     },
     proxy: {
       "/api": {
-        target: "https://devwebinar.change20.no",
+        target: "http://localhost:8000",
         changeOrigin: true,
         secure: false,
       },

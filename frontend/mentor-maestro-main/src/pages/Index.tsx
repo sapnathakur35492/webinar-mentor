@@ -58,76 +58,103 @@ const Index = () => {
   return (
     <MainLayout>
       <div className="space-y-8">
-        {/* Welcome Header - Premium with gradient text */}
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-8 text-white shadow-2xl">
-          {/* Decorative elements */}
-          <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-green-500/30 to-emerald-500/30 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-          <div className="absolute bottom-0 left-0 w-64 h-64 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
-
-          <div className="relative z-10 flex items-center justify-between">
+        {/* Welcome Header - Dark Theme matching reference */}
+        <div className="relative overflow-hidden rounded-xl p-6" style={{ backgroundColor: '#142721' }}>
+          <div className="flex items-center justify-between">
             <div>
-              <div className="flex items-center gap-3 mb-2">
-                <span className="text-3xl">👋</span>
-                <p className="text-green-400 text-sm font-semibold uppercase tracking-wider">
+              <div className="flex items-center gap-2 mb-1">
+                <p className="text-[#3bba69] text-xs font-semibold uppercase tracking-wider">
                   Welcome back
                 </p>
               </div>
-              <h1 className="text-4xl font-bold text-white mb-2">
+              <h1 className="text-2xl font-bold text-white mb-1">
                 {profile?.full_name?.split(' ')[0] || "Mentor"}!
               </h1>
-              <p className="text-gray-400 text-lg max-w-xl">
+              <p className="text-white/60 text-sm max-w-md">
                 Your AI-powered webinar factory is ready. Let's create something amazing today.
               </p>
 
               <Link
                 to="/concepts"
-                className="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-green-500 to-emerald-500 text-white font-semibold shadow-lg shadow-green-500/30 hover:shadow-green-500/50 transition-all duration-300 hover:scale-105"
+                className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-white font-medium text-sm transition-all hover:scale-105"
+                style={{ background: 'linear-gradient(135deg, #3bba69, #279b65)' }}
               >
-                <Zap className="h-5 w-5" />
+                <Zap className="h-4 w-4" />
                 Generate Webinar Concept
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
 
-            {/* Stats summary */}
-            <div className="hidden lg:flex items-center gap-6">
-              <div className="text-center p-4 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/10">
-                <div className="flex items-center justify-center h-12 w-12 mx-auto rounded-xl bg-blue-500/20 mb-2">
-                  <TrendingUp className="h-6 w-6 text-blue-400" />
+            {/* Stats summary - Matching reference exactly */}
+            <div className="hidden lg:flex items-center gap-4">
+              {/* Documents Stat */}
+              <div className="p-4 rounded-lg border border-white/10" style={{ backgroundColor: '#0d1f1a' }}>
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="h-6 w-6 rounded bg-blue-500/20 flex items-center justify-center">
+                    <TrendingUp className="h-3.5 w-3.5 text-blue-400" />
+                  </div>
+                  <span className="text-white/60 text-xs">Documents</span>
                 </div>
-                <p className="text-2xl font-bold text-white">{documents.length}</p>
-                <p className="text-xs text-gray-400">Documents</p>
+                <div className="flex items-end gap-3">
+                  <p className="text-xl font-bold text-white">{documents.length}</p>
+                  {/* Mini Bar Chart */}
+                  <div className="flex items-end gap-0.5 pb-1">
+                    {[3, 5, 2, 6, 4, 7, 5].map((h, i) => (
+                      <div key={i} className="w-1" style={{ height: `${h * 2}px`, backgroundColor: i % 2 === 0 ? '#3bba69' : '#fbbf24' }} />
+                    ))}
+                  </div>
+                </div>
               </div>
-              <div className="text-center p-4 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/10">
-                <div className="flex items-center justify-center h-12 w-12 mx-auto rounded-xl bg-amber-500/20 mb-2">
-                  <Lightbulb className="h-6 w-6 text-amber-400" />
+              {/* Concepts Stat */}
+              <div className="p-4 rounded-lg border border-white/10" style={{ backgroundColor: '#0d1f1a' }}>
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="h-6 w-6 rounded bg-amber-500/20 flex items-center justify-center">
+                    <Lightbulb className="h-3.5 w-3.5 text-amber-400" />
+                  </div>
+                  <span className="text-white/60 text-xs">Concepts</span>
                 </div>
-                <p className="text-2xl font-bold text-white">{concepts.length || 0}</p>
-                <p className="text-xs text-gray-400">Concepts</p>
+                <div className="flex items-end gap-3">
+                  <p className="text-xl font-bold text-white">{concepts.length || 0}</p>
+                  <div className="flex items-end gap-0.5 pb-1">
+                    {[4, 6, 3, 5, 7, 4, 6].map((h, i) => (
+                      <div key={i} className="w-1" style={{ height: `${h * 2}px`, backgroundColor: i % 2 === 0 ? '#3bba69' : '#fbbf24' }} />
+                    ))}
+                  </div>
+                </div>
               </div>
-              <div className="text-center p-4 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/10">
-                <div className="flex items-center justify-center h-12 w-12 mx-auto rounded-xl bg-emerald-500/20 mb-2">
-                  <Mail className="h-6 w-6 text-emerald-400" />
+              {/* Emails Stat */}
+              <div className="p-4 rounded-lg border border-white/10" style={{ backgroundColor: '#0d1f1a' }}>
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="h-6 w-6 rounded bg-emerald-500/20 flex items-center justify-center">
+                    <Mail className="h-3.5 w-3.5 text-emerald-400" />
+                  </div>
+                  <span className="text-white/60 text-xs">Emails</span>
                 </div>
-                <p className="text-2xl font-bold text-white">{sequences.length || 0}</p>
-                <p className="text-xs text-gray-400">Emails</p>
+                <div className="flex items-end gap-3">
+                  <p className="text-xl font-bold text-white">{sequences.length || 0}</p>
+                  <div className="flex items-end gap-0.5 pb-1">
+                    {[5, 3, 6, 4, 7, 5, 3].map((h, i) => (
+                      <div key={i} className="w-1" style={{ height: `${h * 2}px`, backgroundColor: i % 2 === 0 ? '#3bba69' : '#fbbf24' }} />
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Pipeline Progress - Modern horizontal timeline */}
-        <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-lg shadow-gray-200/50">
-          <div className="flex items-center justify-between mb-6">
+        {/* Pipeline Progress - Dark Theme matching reference */}
+        <div className="rounded-xl p-5 border border-white/10" style={{ backgroundColor: '#142721' }}>
+          <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-xl font-bold text-gray-900">
+              <h2 className="text-lg font-bold text-white">
                 Your Pipeline Progress
               </h2>
-              <p className="text-sm text-gray-500 mt-1">Track your webinar production journey</p>
+              <p className="text-xs text-white/50 mt-0.5">Track your webinar production journey</p>
             </div>
-            <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-green-50 to-emerald-50 border border-green-100">
-              <Clock className="h-4 w-4 text-green-600" />
-              <span className="text-sm font-semibold text-green-700">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{ backgroundColor: 'rgba(59, 186, 105, 0.15)' }}>
+              <Clock className="h-3.5 w-3.5 text-[#3bba69]" />
+              <span className="text-xs font-medium text-[#3bba69]">
                 Step {currentStageIndex + 1} of {pipelineStages.length}
               </span>
             </div>
@@ -135,11 +162,14 @@ const Index = () => {
 
           <div className="relative">
             {/* Progress line background */}
-            <div className="absolute top-6 left-0 right-0 h-1 bg-gray-100 rounded-full" />
+            <div className="absolute top-5 left-0 right-0 h-0.5 bg-white/10 rounded-full" />
             {/* Progress line fill */}
             <div
-              className="absolute top-6 left-0 h-1 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full transition-all duration-700 shadow-lg shadow-green-500/50"
-              style={{ width: `${(currentStageIndex / (pipelineStages.length - 1)) * 100}%` }}
+              className="absolute top-5 left-0 h-0.5 rounded-full transition-all duration-700"
+              style={{
+                width: `${(currentStageIndex / (pipelineStages.length - 1)) * 100}%`,
+                backgroundColor: '#3bba69'
+              }}
             />
 
             <div className="relative flex items-start justify-between">
@@ -153,30 +183,24 @@ const Index = () => {
                   <div
                     key={stage.id}
                     className="flex flex-col items-center"
-                    style={{ animationDelay: `${index * 100}ms` }}
                   >
                     <div className={cn(
-                      "relative flex h-12 w-12 items-center justify-center rounded-xl transition-all duration-500 mb-3 z-10",
-                      isCompleted && "bg-gradient-to-br from-green-400 to-emerald-500 text-white shadow-lg shadow-green-500/30",
-                      isCurrent && "bg-white border-2 border-green-500 text-green-500 shadow-lg shadow-green-500/20 animate-pulse",
-                      isPending && "bg-gray-50 text-gray-300 border border-gray-100"
+                      "relative flex h-10 w-10 items-center justify-center rounded-lg transition-all duration-500 mb-2 z-10",
+                      isCompleted && "bg-[#3bba69] text-white",
+                      isCurrent && "border-2 border-[#3bba69] text-[#3bba69]" + " bg-[#0d1f1a]",
+                      isPending && "bg-white/5 text-white/30 border border-white/10"
                     )}>
                       {isCompleted ? (
-                        <CheckCircle2 className="h-6 w-6" />
+                        <CheckCircle2 className="h-5 w-5" />
                       ) : (
-                        <Icon className="h-5 w-5" />
-                      )}
-
-                      {/* Glow effect for current stage */}
-                      {isCurrent && (
-                        <div className="absolute inset-0 bg-green-500/20 rounded-xl blur-xl animate-pulse" />
+                        <Icon className="h-4 w-4" />
                       )}
                     </div>
                     <p className={cn(
-                      "text-xs font-medium text-center max-w-[80px] transition-colors duration-300",
-                      isCompleted && "text-green-600",
-                      isCurrent && "text-green-600 font-semibold",
-                      isPending && "text-gray-400"
+                      "text-[10px] font-medium text-center max-w-[70px]",
+                      isCompleted && "text-[#3bba69]",
+                      isCurrent && "text-[#3bba69] font-semibold",
+                      isPending && "text-white/40"
                     )}>
                       {stage.label}
                     </p>
@@ -187,93 +211,94 @@ const Index = () => {
           </div>
         </div>
 
-        {/* Quick Actions Grid - Premium cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-          {/* Documents Card */}
+        {/* Quick Actions Grid - Dark Theme matching reference */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Archive Card */}
           <Link
             to="/setup"
-            className="group relative overflow-hidden rounded-2xl bg-white p-6 border border-gray-100 hover:border-blue-200 shadow-lg shadow-gray-200/50 hover:shadow-blue-100/50 transition-all duration-300 hover:-translate-y-1"
+            className="group relative overflow-hidden rounded-lg p-5 border border-white/10 hover:border-[#3bba69]/30 transition-all duration-300"
+            style={{ backgroundColor: '#142721' }}
           >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-100 to-blue-50 rounded-full blur-2xl opacity-50 translate-x-10 -translate-y-10 group-hover:opacity-80 transition-opacity" />
-
-            <div className="relative">
-              <div className="flex items-center justify-between mb-4">
-                <div className="rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 p-3 shadow-lg shadow-blue-500/30">
-                  <FileText className="h-6 w-6 text-white" />
-                </div>
-                <ArrowRight className="h-5 w-5 text-gray-300 group-hover:text-blue-500 group-hover:translate-x-1 transition-all duration-300" />
+            <div className="flex items-center gap-3 mb-3">
+              <div className="h-7 w-7 rounded bg-white/10 flex items-center justify-center">
+                <Mail className="h-4 w-4 text-white/60" />
               </div>
-              <h3 className="font-semibold text-gray-900 text-lg">Documents</h3>
-              <p className="text-sm text-gray-500 mt-1">Profile & uploads</p>
-              <p className="text-3xl font-bold text-gray-900 mt-4">
-                {documents.length}
-              </p>
+              <span className="text-white/60 text-sm">Archive</span>
+            </div>
+            <div className="flex items-end justify-between">
+              <p className="text-2xl font-bold text-white">{documents.length}</p>
+              {/* Mini Bar Chart */}
+              <div className="flex items-end gap-0.5">
+                {[3, 5, 2, 6, 4, 7, 5].map((h, i) => (
+                  <div key={i} className="w-1" style={{ height: `${h * 2}px`, backgroundColor: i % 2 === 0 ? '#3bba69' : '#fbbf24' }} />
+                ))}
+              </div>
             </div>
           </Link>
 
-          {/* Webinar Concept Card */}
+          {/* Active Card */}
           <Link
             to="/concepts"
-            className="group relative overflow-hidden rounded-2xl bg-white p-6 border border-gray-100 hover:border-amber-200 shadow-lg shadow-gray-200/50 hover:shadow-amber-100/50 transition-all duration-300 hover:-translate-y-1"
+            className="group relative overflow-hidden rounded-lg p-5 border border-white/10 hover:border-[#3bba69]/30 transition-all duration-300"
+            style={{ backgroundColor: '#142721' }}
           >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-amber-100 to-amber-50 rounded-full blur-2xl opacity-50 translate-x-10 -translate-y-10 group-hover:opacity-80 transition-opacity" />
-
-            <div className="relative">
-              <div className="flex items-center justify-between mb-4">
-                <div className="rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 p-3 shadow-lg shadow-amber-500/30">
-                  <Lightbulb className="h-6 w-6 text-white" />
-                </div>
-                <ArrowRight className="h-5 w-5 text-gray-300 group-hover:text-amber-500 group-hover:translate-x-1 transition-all duration-300" />
+            <div className="flex items-center gap-3 mb-3">
+              <div className="h-7 w-7 rounded bg-[#3bba69]/20 flex items-center justify-center">
+                <Zap className="h-4 w-4 text-[#3bba69]" />
               </div>
-              <h3 className="font-semibold text-gray-900 text-lg">Webinar Concept</h3>
-              <p className="text-sm text-gray-500 mt-1">AI-generated ideas</p>
-              <p className="text-3xl font-bold text-gray-900 mt-4">
-                {concepts.length || "—"}
-              </p>
+              <span className="text-white/60 text-sm">Active</span>
+            </div>
+            <div className="flex items-end justify-between">
+              <p className="text-2xl font-bold text-white">{concepts.length || 0}</p>
+              <div className="flex items-end gap-0.5">
+                {[4, 6, 3, 5, 7, 4, 6].map((h, i) => (
+                  <div key={i} className="w-1" style={{ height: `${h * 2}px`, backgroundColor: i % 2 === 0 ? '#3bba69' : '#fbbf24' }} />
+                ))}
+              </div>
             </div>
           </Link>
 
-          {/* Slide Structure Card */}
+          {/* Drafts Card */}
           <Link
             to="/structure"
-            className="group relative overflow-hidden rounded-2xl bg-white p-6 border border-gray-100 hover:border-purple-200 shadow-lg shadow-gray-200/50 hover:shadow-purple-100/50 transition-all duration-300 hover:-translate-y-1"
+            className="group relative overflow-hidden rounded-lg p-5 border border-white/10 hover:border-[#3bba69]/30 transition-all duration-300"
+            style={{ backgroundColor: '#142721' }}
           >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-100 to-purple-50 rounded-full blur-2xl opacity-50 translate-x-10 -translate-y-10 group-hover:opacity-80 transition-opacity" />
-
-            <div className="relative">
-              <div className="flex items-center justify-between mb-4">
-                <div className="rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 p-3 shadow-lg shadow-purple-500/30">
-                  <Layout className="h-6 w-6 text-white" />
-                </div>
-                <ArrowRight className="h-5 w-5 text-gray-300 group-hover:text-purple-500 group-hover:translate-x-1 transition-all duration-300" />
+            <div className="flex items-center gap-3 mb-3">
+              <div className="h-7 w-7 rounded bg-amber-500/20 flex items-center justify-center">
+                <Layout className="h-4 w-4 text-amber-400" />
               </div>
-              <h3 className="font-semibold text-gray-900 text-lg">Slide Structure</h3>
-              <p className="text-sm text-gray-500 mt-1">Presentation outline</p>
-              <p className="text-3xl font-bold text-gray-900 mt-4">
-                —
-              </p>
+              <span className="text-white/60 text-sm">Drafts</span>
+            </div>
+            <div className="flex items-end justify-between">
+              <p className="text-2xl font-bold text-white">8</p>
+              <div className="flex items-end gap-0.5">
+                {[5, 3, 6, 4, 7, 5, 3].map((h, i) => (
+                  <div key={i} className="w-1" style={{ height: `${h * 2}px`, backgroundColor: i % 2 === 0 ? '#3bba69' : '#fbbf24' }} />
+                ))}
+              </div>
             </div>
           </Link>
 
-          {/* Email Sequences Card */}
+          {/* InActive Card */}
           <Link
             to="/emails"
-            className="group relative overflow-hidden rounded-2xl bg-white p-6 border border-gray-100 hover:border-emerald-200 shadow-lg shadow-gray-200/50 hover:shadow-emerald-100/50 transition-all duration-300 hover:-translate-y-1"
+            className="group relative overflow-hidden rounded-lg p-5 border border-white/10 hover:border-[#3bba69]/30 transition-all duration-300"
+            style={{ backgroundColor: '#142721' }}
           >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-emerald-100 to-emerald-50 rounded-full blur-2xl opacity-50 translate-x-10 -translate-y-10 group-hover:opacity-80 transition-opacity" />
-
-            <div className="relative">
-              <div className="flex items-center justify-between mb-4">
-                <div className="rounded-xl bg-gradient-to-br from-emerald-400 to-green-500 p-3 shadow-lg shadow-emerald-500/30">
-                  <Mail className="h-6 w-6 text-white" />
-                </div>
-                <ArrowRight className="h-5 w-5 text-gray-300 group-hover:text-emerald-500 group-hover:translate-x-1 transition-all duration-300" />
+            <div className="flex items-center gap-3 mb-3">
+              <div className="h-7 w-7 rounded bg-white/10 flex items-center justify-center">
+                <Mail className="h-4 w-4 text-white/60" />
               </div>
-              <h3 className="font-semibold text-gray-900 text-lg">Email Sequences</h3>
-              <p className="text-sm text-gray-500 mt-1">Automated campaigns</p>
-              <p className="text-3xl font-bold text-gray-900 mt-4">
-                {sequences.length || 0}
-              </p>
+              <span className="text-white/60 text-sm">InActive</span>
+            </div>
+            <div className="flex items-end justify-between">
+              <p className="text-2xl font-bold text-white">{sequences.length || 0}</p>
+              <div className="flex items-end gap-0.5">
+                {[2, 4, 3, 5, 2, 4, 3].map((h, i) => (
+                  <div key={i} className="w-1" style={{ height: `${h * 2}px`, backgroundColor: i % 2 === 0 ? '#3bba69' : '#fbbf24' }} />
+                ))}
+              </div>
             </div>
           </Link>
         </div>
@@ -367,30 +392,25 @@ const Index = () => {
           const currentStep = nextStepConfig[profile?.current_stage || "onboarding"] || nextStepConfig.onboarding;
 
           return (
-            <div className={cn("bg-gradient-to-r rounded-2xl p-6 border border-gray-200 shadow-lg relative overflow-hidden", currentStep.bgColor)}>
-              {/* Decorative background element */}
-              <div className="absolute top-0 right-0 w-48 h-48 bg-white/30 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-
+            <div className="rounded-xl p-5 border border-white/10 relative overflow-hidden" style={{ backgroundColor: '#142721' }}>
               <div className="flex items-start gap-4 relative z-10">
-                <div className={cn("flex items-center justify-center h-14 w-14 rounded-2xl bg-white shadow-lg shrink-0")}>
-                  <span className="text-3xl">{currentStep.emoji}</span>
+                <div className="flex items-center justify-center h-12 w-12 rounded-xl shrink-0" style={{ backgroundColor: 'rgba(59, 186, 105, 0.2)' }}>
+                  <span className="text-2xl">{currentStep.emoji}</span>
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <Zap className={cn("h-4 w-4", currentStep.color)} />
-                    <span className={cn("text-xs font-semibold uppercase tracking-wider", currentStep.color)}>Next Step</span>
+                    <Zap className="h-3.5 w-3.5 text-[#3bba69]" />
+                    <span className="text-xs font-semibold uppercase tracking-wider text-[#3bba69]">Next Step</span>
                   </div>
-                  <h3 className="font-bold text-gray-900 text-lg">{currentStep.title}</h3>
-                  <p className="text-sm text-gray-600 mt-1 leading-relaxed">
+                  <h3 className="font-bold text-white text-base">{currentStep.title}</h3>
+                  <p className="text-sm text-white/60 mt-1 leading-relaxed">
                     {currentStep.description}
                   </p>
                 </div>
                 <Link
                   to={currentStep.link}
-                  className={cn(
-                    "hidden md:flex items-center gap-2 px-5 py-3 rounded-xl bg-white font-semibold shadow-md hover:shadow-lg transition-all hover:scale-105 shrink-0",
-                    currentStep.color
-                  )}
+                  className="hidden md:flex items-center gap-2 px-4 py-2 rounded-lg text-white font-medium text-sm transition-all hover:scale-105 shrink-0"
+                  style={{ background: 'linear-gradient(135deg, #3bba69, #279b65)' }}
                 >
                   {currentStep.action}
                   <ArrowRight className="h-4 w-4" />
@@ -400,10 +420,8 @@ const Index = () => {
               {/* Mobile action button */}
               <Link
                 to={currentStep.link}
-                className={cn(
-                  "md:hidden mt-4 flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-white font-semibold shadow-md hover:shadow-lg transition-all w-full",
-                  currentStep.color
-                )}
+                className="md:hidden mt-4 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-white font-medium text-sm transition-all w-full"
+                style={{ background: 'linear-gradient(135deg, #3bba69, #279b65)' }}
               >
                 {currentStep.action}
                 <ArrowRight className="h-4 w-4" />

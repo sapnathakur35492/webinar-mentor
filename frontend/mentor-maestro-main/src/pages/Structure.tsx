@@ -262,10 +262,62 @@ export default function Structure() {
               ) : (
                 <div className="space-y-4">
                   <div className="bg-gray-50 rounded-lg p-6 border border-gray-200 max-h-[500px] overflow-y-auto">
-                    <pre className="whitespace-pre-wrap font-sans text-sm text-gray-700 leading-relaxed">
-                      {/* Display a simplified preview if JSON, or raw text */}
-                      {finalConcept.secret_structure}
-                    </pre>
+                    {/* Parse and display belief shifts in formatted cards */}
+                    {(() => {
+                      try {
+                        const beliefs = typeof finalConcept.secret_structure === 'string'
+                          ? JSON.parse(finalConcept.secret_structure)
+                          : finalConcept.secret_structure;
+
+                        if (Array.isArray(beliefs)) {
+                          return (
+                            <div className="space-y-4">
+                              {beliefs.map((belief: any, idx: number) => (
+                                <div key={idx} className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
+                                  <div className="flex items-center gap-2 mb-3">
+                                    <span className="flex items-center justify-center h-7 w-7 rounded-full bg-[#8ABD41]/20 text-[#5a7d2a] text-sm font-bold">
+                                      {idx + 1}
+                                    </span>
+                                    <span className="font-semibold text-gray-800">Belief Shift {idx + 1}</span>
+                                  </div>
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    {belief.assumption && (
+                                      <div className="bg-red-50 rounded-lg p-3 border border-red-200">
+                                        <span className="text-xs text-red-600 font-bold uppercase tracking-wide">❌ Old Assumption</span>
+                                        <p className="text-sm text-gray-800 mt-1 font-medium">"{belief.assumption}"</p>
+                                      </div>
+                                    )}
+                                    {belief.belief && (
+                                      <div className="bg-green-50 rounded-lg p-3 border border-green-200">
+                                        <span className="text-xs text-green-600 font-bold uppercase tracking-wide">✅ New Belief</span>
+                                        <p className="text-sm text-gray-800 mt-1 font-medium">"{belief.belief}"</p>
+                                      </div>
+                                    )}
+                                    {belief.story && (
+                                      <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+                                        <span className="text-xs text-blue-600 font-bold uppercase tracking-wide">📖 Story</span>
+                                        <p className="text-sm text-gray-800 mt-1">{belief.story}</p>
+                                      </div>
+                                    )}
+                                    {belief.transformation && (
+                                      <div className="bg-amber-50 rounded-lg p-3 border border-amber-200">
+                                        <span className="text-xs text-amber-600 font-bold uppercase tracking-wide">🔄 Transformation</span>
+                                        <p className="text-sm text-gray-800 mt-1">{belief.transformation}</p>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        }
+                        // Fallback for non-array content
+                        return <pre className="whitespace-pre-wrap font-sans text-sm text-gray-700 leading-relaxed">{finalConcept.secret_structure}</pre>;
+                      } catch {
+                        // Fallback if parsing fails
+                        return <pre className="whitespace-pre-wrap font-sans text-sm text-gray-700 leading-relaxed">{finalConcept.secret_structure}</pre>;
+                      }
+                    })()}
                   </div>
                   <div className="flex justify-end gap-2">
                     <Button variant="outline" onClick={() => navigator.clipboard.writeText(finalConcept.secret_structure || "")}>

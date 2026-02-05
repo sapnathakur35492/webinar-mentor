@@ -2,9 +2,9 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AdminFeedback } from "@/components/AdminFeedback";
-import { 
-  CheckCircle, 
-  Clock, 
+import {
+  CheckCircle,
+  Clock,
   Send,
   RefreshCw,
   AlertCircle,
@@ -44,7 +44,7 @@ export default function Approvals() {
   const { finalConcept, submitForApproval: submitConceptForApproval } = useWebinarConcepts();
   const { sequences, submitForApproval: submitEmailForApproval } = useEmailSequences();
   const { media, submitForApproval: submitMediaForApproval } = useGeneratedMedia(finalConcept?.id);
-  
+
   const [submittingAll, setSubmittingAll] = useState(false);
 
   const handleSubmitAllForApproval = async () => {
@@ -77,8 +77,8 @@ export default function Approvals() {
     }
   };
 
-  const allApproved = finalConcept?.ready_to_publish && 
-    sequences.every(s => s.ready_to_publish) && 
+  const allApproved = finalConcept?.ready_to_publish &&
+    sequences.every(s => s.ready_to_publish) &&
     media.every(m => m.ready_to_publish);
 
   const pendingApprovalCount = [
@@ -113,7 +113,7 @@ export default function Approvals() {
             </p>
           </div>
           {hasContentToSubmit && (
-            <Button 
+            <Button
               onClick={handleSubmitAllForApproval}
               disabled={submittingAll}
               className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
@@ -139,7 +139,7 @@ export default function Approvals() {
             <div className="flex items-center gap-3">
               <Rocket className="h-6 w-6 text-success" />
               <div>
-                <h3 className="font-semibold text-foreground">Ready to Publish! 🎉</h3>
+                <h3 className="font-semibold text-foreground">Ready to Publish!</h3>
                 <p className="text-sm text-muted-foreground">
                   All content has been approved by admin. Your webinar is ready to go live.
                 </p>
@@ -235,8 +235,8 @@ export default function Approvals() {
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-muted-foreground">
-                        {finalConcept.submitted_for_approval_at 
-                          ? `Submitted for approval` 
+                        {finalConcept.submitted_for_approval_at
+                          ? `Submitted for approval`
                           : "Not yet submitted"}
                       </span>
                       <Link to="/concepts">
@@ -271,10 +271,10 @@ export default function Approvals() {
                     <span className="font-medium text-foreground">Email Sequences</span>
                     <p className="text-xs text-muted-foreground">{sequences.length} sequences</p>
                   </div>
-                  <Badge className={cn("border-0 text-xs mr-2", 
-                    sequences.every(s => s.ready_to_publish) 
-                      ? "bg-success/20 text-success" 
-                      : sequences.some(s => s.submitted_for_approval_at) 
+                  <Badge className={cn("border-0 text-xs mr-2",
+                    sequences.every(s => s.ready_to_publish)
+                      ? "bg-success/20 text-success"
+                      : sequences.some(s => s.submitted_for_approval_at)
                         ? "bg-warning/20 text-warning"
                         : "bg-muted text-muted-foreground"
                   )}>
@@ -291,10 +291,10 @@ export default function Approvals() {
                       return (
                         <div key={seq.id} className="flex items-center justify-between bg-muted/50 rounded-lg p-3">
                           <div className="flex items-center gap-3">
-                            <StatusIcon className={cn("h-4 w-4", 
-                              status === "approved" ? "text-success" : 
-                              status === "pending" ? "text-warning" : 
-                              status === "rejected" ? "text-destructive" : "text-muted-foreground"
+                            <StatusIcon className={cn("h-4 w-4",
+                              status === "approved" ? "text-success" :
+                                status === "pending" ? "text-warning" :
+                                  status === "rejected" ? "text-destructive" : "text-muted-foreground"
                             )} />
                             <div>
                               <p className="text-sm font-medium text-foreground capitalize">{seq.sequence_type.replace("_", " ")}</p>
@@ -340,10 +340,10 @@ export default function Approvals() {
                     <span className="font-medium text-foreground">Promotional Images</span>
                     <p className="text-xs text-muted-foreground">{media.length} images</p>
                   </div>
-                  <Badge className={cn("border-0 text-xs mr-2", 
-                    media.every(m => m.ready_to_publish) 
-                      ? "bg-success/20 text-success" 
-                      : media.some(m => m.submitted_for_approval_at) 
+                  <Badge className={cn("border-0 text-xs mr-2",
+                    media.every(m => m.ready_to_publish)
+                      ? "bg-success/20 text-success"
+                      : media.some(m => m.submitted_for_approval_at)
                         ? "bg-warning/20 text-warning"
                         : "bg-muted text-muted-foreground"
                   )}>
