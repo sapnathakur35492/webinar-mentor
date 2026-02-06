@@ -172,15 +172,21 @@ export default function Concepts() {
 
     setRefiningConcept(conceptId);
     try {
-      const { data, error } = await supabase.functions.invoke("refine-concept", {
-        body: { conceptId, feedback: conceptFeedback },
-      });
+      const assetId = localStorage.getItem("current_asset_id");
+      if (!assetId) throw new Error("No asset ID found. Please go back to Setup.");
 
-      if (error) throw error;
+      const result = await api.refineConcept(assetId, conceptId, conceptFeedback);
 
-      setFeedback(prev => ({ ...prev, [conceptId]: "" }));
-      toast.success("Concept refined based on your feedback!");
+      if (result.status === "success") {
+        setFeedback(prev => ({ ...prev, [conceptId]: "" }));
+        toast.success("Concept refined based on your feedback!");
+        // Re-fetch concepts
+        queryClient.invalidateQueries({ queryKey: ["webinar-concepts"] });
+      } else {
+        throw new Error(result.message || "Failed to refine concept");
+      }
     } catch (error: any) {
+      console.error("[Concepts] Refinement error:", error);
       toast.error(error.message || "Failed to refine concept");
     } finally {
       setRefiningConcept(null);

@@ -1,4 +1,6 @@
 from fastapi import APIRouter, HTTPException, Body, File, UploadFile, Form, BackgroundTasks
+from fastapi.responses import JSONResponse
+from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
@@ -136,6 +138,26 @@ async def update_concept(request: TranscriptUpdateRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+class RefineConceptRequest(BaseModel):
+    asset_id: str
+    concept_id: str
+    feedback: str
+
+@router.post("/concepts/refine")
+async def refine_concept(request: RefineConceptRequest):
+    try:
+        result = await webinar_ai_service.refine_concept(
+            request.asset_id,
+            request.concept_id,
+            request.feedback
+        )
+        return JSONResponse(content=jsonable_encoder(result))
+    except Exception as e:
+        print(f"Error in refine_concept: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
 class SelectConceptRequest(BaseModel):
     concept_index: int
     from_improved: bool = True
@@ -216,7 +238,9 @@ async def get_asset(asset_id: str):
         if not asset:
             raise HTTPException(status_code=404, detail="Webinar asset not found")
         
-        return asset
+        # IMPROVED SERIALIZATION: Convert to dict manually to avoid potential 500s 
+        # when Pydantic tries to validate complex Beanie documents with nested models
+        return JSONResponse(content=jsonable_encoder(asset))
     except HTTPException:
         raise  # Re-raise HTTP exceptions
     except Exception as e:

@@ -106,8 +106,9 @@ export const api = {
   },
 
   // 6. Generate Video
-  generateVideo: async (scriptText: string, sourceUrl?: string) => {
+  generateVideo: async (assetId?: string, scriptText?: string, sourceUrl?: string) => {
     const response = await axios.post(`${API_Base}/video/generate`, {
+      asset_id: assetId,
       script_text: scriptText,
       source_url: sourceUrl
     });
@@ -149,6 +150,16 @@ export const api = {
     const response = await axios.post(`${API_Base}/marketing/generate`, {
       concept_id: conceptId,
       media_type: mediaType
+    });
+    return response.data;
+  },
+
+  // 12. Refine Concept with feedback
+  refineConcept: async (assetId: string, conceptId: string, feedback: string) => {
+    const response = await axios.post(`${API_Base}/concepts/refine`, {
+      asset_id: assetId,
+      concept_id: conceptId,
+      feedback: feedback
     });
     return response.data;
   }

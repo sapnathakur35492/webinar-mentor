@@ -1,6 +1,7 @@
 import os
 import json
 import requests
+from datetime import datetime
 from api.models import WebinarAsset, Concept, Slide, EmailPlan
 from api.prompts.concepts_v2 import (
     CONCEPT_GENERATION_PROMPT, 
@@ -349,6 +350,76 @@ class WebinarAIService:
             transcript=transcript
         )
         return await self.generate_content(prompt)
+
+    async def refine_concept(self, asset_id: str, concept_id: str, feedback: str) -> dict:
+        """
+        Refine a specific concept based on user feedback.
+        """
+        asset = await WebinarAsset.get(asset_id)
+        if not asset:
+            raise ValueError("Asset not found")
+
+        # Find the concept (it can be in original or improved list)
+        # However, concepts are mapped in UI with fake IDs "assetId_index"
+        try:
+            parts = concept_id.split('_')
+            index = int(parts[-1])
+        except:
+            raise ValueError("Invalid concept ID format")
+
+        source_list = asset.concepts_improved if asset.concepts_improved else asset.concepts_original
+        if not source_list or index >= len(source_list):
+            raise ValueError("Concept not found at index")
+
+        concept = source_list[index]
+        
+        # MOCK REFINEMENT
+        if USE_MOCK_OPENAI:
+            print(f"[WebinarAI] MOCK REFINEMENT for concept {index}")
+            concept.big_idea = f"(REFINED) {concept.big_idea}"
+            concept.hook = f"Refined based on: {feedback}\n\n{concept.hook}"
+            asset.updated_at = datetime.utcnow()
+            await asset.save()
+            return {"status": "success", "concept": concept}
+
+        # REAL REFINEMENT
+        prompt = f"""
+        Refine the following webinar concept based on this feedback: "{feedback}"
+        
+        Current Concept:
+        Title: {concept.title}
+        Big Idea: {concept.big_idea}
+        Hooks: {concept.hook}
+        
+        Respond ONLY with a JSON object encompassing the refined fields:
+        {{
+            "title": "...",
+            "big_idea": "...",
+            "hook": "...",
+            "structure_points": [...],
+            "secrets": [...],
+            "mechanism": "...",
+            "narrative_angle": "...",
+            "offer_transition_logic": "...",
+            "value_anchor": {{...}},
+            "bonus_ideas": [...],
+            "cta_sentence": "...",
+            "promises": [...]
+        }}
+        """
+        
+        response_text = await self.generate_content(prompt)
+        refined_data = self._parse_concepts_from_text(response_text)
+        
+        if refined_data:
+            new_concept = refined_data[0]
+            # Replace in list
+            source_list[index] = new_concept
+            asset.updated_at = datetime.utcnow()
+            await asset.save()
+            return {"status": "success", "concept": new_concept}
+        
+        raise ValueError("Failed to parse refined concept")
         
     async def generate_structure(self, asset_id: str, concept_text: str) -> str:
         asset = await WebinarAsset.get(asset_id)

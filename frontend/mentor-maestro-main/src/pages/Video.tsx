@@ -57,7 +57,7 @@ export default function VideoPage() {
         try {
             // 1. Generate Video (Trigger D-ID)
             console.log("Generating video for script:", script.substring(0, 50) + "...");
-            const response = await api.generateVideo(script); // Calls POST /video/generate
+            const response = await api.generateVideo(assetId || undefined, script); // Calls POST /video/generate
 
             if (response.status === "success" && response.data) {
                 toast.success("Video generation started! This may take a few moments.");
@@ -196,27 +196,29 @@ export default function VideoPage() {
                                             {videoResult.status === "done" ? "Video Ready!" : "Generation Started"}
                                         </h3>
 
-                                        {/* SIMULATION ALERT */}
-                                        {videoResult.id && videoResult.id.includes("MOCK") && (
-                                            <div className="bg-amber-500/10 border border-amber-500/20 rounded-md p-3 my-3 text-sm text-amber-600 text-left">
-                                                <p className="font-semibold flex items-center gap-2">
-                                                    ⚠️ Simulation Mode (Localhost)
-                                                </p>
-                                                <p className="opacity-90 mt-1">
-                                                    Real AI generation requires a public server.
-                                                    This is a <b>demo video</b> to prove the flow works.
-                                                    When you deploy properly, DORA-14 will speak your script.
-                                                </p>
+                                        {/* SIMULATION ALERT - HIDDEN FROM FRONTEND AS PER USER REQUEST */}
+                                        {videoResult.id && videoResult.id.includes("MOCK_ERROR") && (
+                                            <div className="hidden" />
+                                        )}
+                                        {videoResult.id && !videoResult.id.includes("MOCK") && (
+                                            <div className="flex items-center justify-center gap-2 text-emerald-600 text-xs font-semibold animate-pulse mb-2">
+                                                <RefreshCw className="h-3 w-3 animate-spin" />
+                                                Live AI Generation Active
                                             </div>
                                         )}
 
-                                        {videoResult.status !== "done" && (
+                                        {videoResult.status !== "done" && !String(videoResult.id).includes("MOCK") && (
                                             <>
                                                 <p className="text-sm text-muted-foreground mb-2">ID: {videoResult.id}</p>
                                                 <p className="text-sm text-muted-foreground animate-pulse">
                                                     Processing video... ({videoResult.status || "started"})
                                                 </p>
                                             </>
+                                        )}
+                                        {videoResult.status !== "done" && String(videoResult.id).includes("MOCK") && (
+                                            <p className="text-sm text-muted-foreground animate-pulse">
+                                                Finalizing your AI video...
+                                            </p>
                                         )}
 
                                         {(videoResult.result_url || videoResult.items?.[0]?.video_url) && (

@@ -51,7 +51,9 @@ class DIDService:
         }
         
         try:
+            print(f"[DIDService] POST to /talks with payload: {payload}")
             response = requests.post(url, json=payload, headers=headers)
+            print(f"[DIDService] Status: {response.status_code}")
             if response.status_code == 201:
                 return response.json()
             elif response.status_code == 504:
