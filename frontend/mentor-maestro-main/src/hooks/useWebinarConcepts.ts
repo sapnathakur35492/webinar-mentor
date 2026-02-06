@@ -46,6 +46,9 @@ export function useWebinarConcepts() {
         const asset = await api.getAsset(assetId);
         console.log("[useWebinarConcepts] Got asset:", asset);
 
+        // Save asset to cache for other consumers
+        queryClient.setQueryData(["webinar-asset", assetId], asset);
+
         // Map Backend "Improved Concepts" (Priority) or "Original Concepts" to UI Format
         const sourceConcepts = asset.concepts_improved && asset.concepts_improved.length > 0
           ? asset.concepts_improved
@@ -148,5 +151,8 @@ export function useWebinarConcepts() {
     updateConcept,
     submitForApproval,
     refetch,
+    promotionalImages: (concepts.length > 0 && assetId) ? queryClient.getQueryData<any>(["webinar-asset", assetId])?.promotional_images : [],
+    videoUrl: (concepts.length > 0 && assetId) ? queryClient.getQueryData<any>(["webinar-asset", assetId])?.video_url : null,
+    videoStatus: (concepts.length > 0 && assetId) ? queryClient.getQueryData<any>(["webinar-asset", assetId])?.video_status : null,
   };
 }

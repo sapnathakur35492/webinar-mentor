@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Body, File, UploadFile, Form, BackgroundTasks
 from pydantic import BaseModel
 from typing import Optional, List
+from datetime import datetime
 from api.models import WebinarAsset, WebinarProcessingJob
 from api.services.background_processor import background_processor
 from api.services.webinar_ai import webinar_ai_service
@@ -251,8 +252,23 @@ async def generate_video(request: VideoGenerateRequest):
         
         if not result:
             raise HTTPException(status_code=500, detail="Failed to create video with D-ID")
+        
+        # SAVE talk_id to asset
+        if request.asset_id:
+            try:
+                from api.models import WebinarAsset
+                asset = await WebinarAsset.get(request.asset_id)
+                if asset:
+                    asset.video_talk_id = result.get("id")
+                    asset.video_status = "pending"
+                    await asset.save()
+            except: pass
             
-        return {"status": "success", "data": result}
+        return {
+            "status": "success", 
+            "data": result,
+            "talk_id": result.get("id")
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -263,6 +279,21 @@ async def get_video_status(talk_id: str):
         result = did_service.get_talk(talk_id)
         if not result:
              raise HTTPException(status_code=404, detail="Talk not found")
+        
+        # PERSIST: If completed, save the URL to the asset
+        if result.get("status") == "completed" and result.get("result_url"):
+            try:
+                from api.models import WebinarAsset
+                # Find the asset that owns this talk
+                asset = await WebinarAsset.find_one(WebinarAsset.video_talk_id == talk_id)
+                if asset:
+                    asset.video_url = result.get("result_url")
+                    asset.video_status = "completed"
+                    await asset.save()
+                    print(f"Persisted video URL for asset {asset.id}")
+            except Exception as e: 
+                print(f"Error persisting video status: {e}")
+
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -358,12 +389,39 @@ async def generate_promotional_image(request: PromotionalImageRequest):
             
             image_url = response.data[0].url
             
-            return {
+            # SUCCESS: Save the result to the database!
+            image_result = {
                 "status": "success",
                 "image_url": image_url,
                 "media_type": request.media_type,
-                "prompt_used": prompt
+                "prompt_used": prompt,
+                "created_at": datetime.utcnow().isoformat()
             }
+            
+            try:
+                asset = await WebinarAsset.get(request.concept_id)
+                if asset:
+                    # Initialize list if missing
+                    if asset.promotional_images is None:
+                        asset.promotional_images = []
+                    
+                    # Remove existing image of same type if any
+                    asset.promotional_images = [img for img in asset.promotional_images if img.get("media_type") != request.media_type]
+                    
+                    # Add new image
+                    asset.promotional_images.append({
+                        "media_type": request.media_type,
+                        "image_url": image_url,
+                        "status": "generated",
+                        "created_at": datetime.utcnow()
+                    })
+                    await asset.save()
+                    print(f"Successfully saved image {request.media_type} to asset {request.concept_id}")
+            except Exception as db_err:
+                print(f"Error saving image to DB: {db_err}")
+
+            return image_result
+
         except openai.OpenAIError as oe:
             # If OpenAI fails (no credits, etc.), fall back to mock mode
             print(f"OpenAI API error: {str(oe)}")
@@ -378,9 +436,28 @@ async def generate_promotional_image(request: PromotionalImageRequest):
                 "thumbnail": "https://picsum.photos/1280/720?random=6"
             }
             
+            image_url = mock_images.get(request.media_type, mock_images["registration_hero"])
+            
+            # Save MOCK result too
+            try:
+                asset = await WebinarAsset.get(request.concept_id)
+                if asset:
+                    if asset.promotional_images is None:
+                        asset.promotional_images = []
+                    asset.promotional_images = [img for img in asset.promotional_images if img.get("media_type") != request.media_type]
+                    asset.promotional_images.append({
+                        "media_type": request.media_type,
+                        "image_url": image_url,
+                        "status": "generated",
+                        "created_at": datetime.utcnow(),
+                        "mock": True
+                    })
+                    await asset.save()
+            except: pass
+
             return {
                 "status": "success",
-                "image_url": mock_images.get(request.media_type, mock_images["registration_hero"]),
+                "image_url": image_url,
                 "media_type": request.media_type,
                 "prompt_used": f"[MOCK - OpenAI Credits Exhausted] {prompt}",
                 "mock": True,

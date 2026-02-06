@@ -60,6 +60,20 @@ async def submit_for_approval(request: SubmitForApprovalRequest):
                 "email_plan": asset.email_plan.dict() if asset.email_plan else None
             }
             asset.email_approval_status = "pending"
+        elif request.content_type == "media":
+            version = 1 # Media doesn't have explicit versions yet, could add later
+            content_snapshot = {
+                "promotional_images": asset.promotional_images,
+                "video_url": asset.video_url
+            }
+            asset.media_approval_status = "pending"
+        elif request.content_type == "media":
+            version = 1 # Media doesn't have explicit versions yet, could add later
+            content_snapshot = {
+                "promotional_images": asset.promotional_images,
+                "video_url": asset.video_url
+            }
+            asset.media_approval_status = "pending"
         else:
             raise HTTPException(status_code=400, detail="Invalid content type")
         
@@ -144,6 +158,12 @@ async def admin_review(request: AdminReviewRequest):
                 asset.email_approval_status = "revision_requested"
                 asset.email_version += 1
             asset.email_admin_notes = request.admin_notes
+        elif request.content_type == "media":
+            if request.action == "approve":
+                asset.media_approval_status = "approved"
+            elif request.action == "reject":
+                asset.media_approval_status = "revision_requested"
+            # We don't have media_admin_notes yet, could add if needed
         
         asset.updated_at = datetime.utcnow()
         await asset.save()
@@ -286,6 +306,8 @@ async def can_proceed_to_stage(mentor_id: str, target_stage: str):
                 missing_approvals.append("Slide Structure")
             elif req == "email_sequence" and asset.email_approval_status != "approved":
                 missing_approvals.append("Email Sequences")
+            elif req == "media" and asset.media_approval_status != "approved":
+                missing_approvals.append("Promotional Media")
         
         can_proceed = len(missing_approvals) == 0
         

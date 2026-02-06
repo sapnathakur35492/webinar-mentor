@@ -49,7 +49,13 @@ const approvalStatusConfig = {
 
 export default function Structure() {
   const { profile } = useProfile();
-  const { finalConcept, submitForApproval: submitConceptForApproval, refetch: refetchConcepts } = useWebinarConcepts();
+  const {
+    finalConcept,
+    submitForApproval: submitConceptForApproval,
+    refetch: refetchConcepts,
+    promotionalImages = [],
+    videoUrl: persistedVideoUrl
+  } = useWebinarConcepts();
   const { sequences, submitForApproval: submitEmailForApproval } = useEmailSequences();
   const { media, submitForApproval: submitMediaForApproval, deleteMedia } = useGeneratedMedia(finalConcept?.id);
   const queryClient = useQueryClient();
@@ -132,7 +138,20 @@ export default function Structure() {
     }
   };
 
-  const getMediaByType = (type: string) => media.find(m => m.media_type === type);
+  const getMediaByType = (type: string) => {
+    // Check MongoDB persisted images first
+    const persisted = promotionalImages.find((img: any) => img.media_type === type);
+    if (persisted) {
+      return {
+        id: persisted.id || type,
+        image_url: persisted.image_url,
+        status: persisted.status,
+        admin_notes: persisted.admin_notes
+      };
+    }
+    // Fallback to Supabase media if still being used
+    return media.find(m => m.media_type === type);
+  };
 
   // --- Video Generation ---
   const handleGenerateVideo = async () => {
@@ -613,13 +632,13 @@ export default function Structure() {
 
                 {/* Right Side: Video Preview */}
                 <div className="flex flex-col items-center justify-center min-h-[300px] rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 p-4">
-                  {videoResult?.result_url ? (
+                  {(videoResult?.result_url || persistedVideoUrl) ? (
                     <div className="w-full space-y-4">
                       <div className="aspect-video rounded-lg overflow-hidden shadow-2xl bg-black">
                         <video
-                          src={videoResult.result_url}
+                          src={videoResult?.result_url || persistedVideoUrl}
                           controls
-                          className="w-full h-full"
+                          className="w-full h-full object-contain"
                           poster="http://localhost:8000/static/avatars/DORA-14.jpg"
                         />
                       </div>
@@ -628,7 +647,7 @@ export default function Structure() {
                           <CheckCircle2 className="h-3 w-3 mr-1" /> HD Render Complete
                         </Badge>
                         <Button variant="ghost" size="sm" asChild>
-                          <a href={videoResult.result_url} download target="_blank" rel="noopener noreferrer">
+                          <a href={videoResult?.result_url || persistedVideoUrl} download target="_blank" rel="noopener noreferrer">
                             <Download className="h-4 w-4 mr-2" /> Download Video
                           </a>
                         </Button>

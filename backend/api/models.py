@@ -144,22 +144,32 @@ class WebinarAsset(Document):
     concepts_improved: List[Concept] = []
     selected_concept: Optional[Concept] = None
     concept_version: int = 1
-    concept_approval_status: str = "draft"  # draft, pending, approved, revision_requested
     concept_admin_notes: Optional[str] = None
     
     # Step 2: Structure
     structure_content: Optional[str] = None # Raw text from AI
     structure: List[Slide] = []
     structure_version: int = 1
-    structure_approval_status: str = "draft"  # draft, pending, approved, revision_requested
     structure_admin_notes: Optional[str] = None
     
     # Step 3: Emails
     email_plan_content: Optional[str] = None # Raw strategy from AI
     email_plan: Optional[EmailPlan] = None
     email_version: int = 1
-    email_approval_status: str = "draft"  # draft, pending, approved, revision_requested
     email_admin_notes: Optional[str] = None
+    
+    video_status: str = "none" # none, pending, completed, failed
+    
+    # Step 5: Approval Status
+    concept_approval_status: str = "draft" # draft, pending, approved, revision_requested
+    structure_approval_status: str = "draft"
+    email_approval_status: str = "draft"
+    media_approval_status: str = "draft"
+
+    # Step 4: Media Assets
+    promotional_images: List[Dict[str, Any]] = [] # [{media_type, image_url, status, created_at}]
+    video_url: Optional[str] = None
+    video_talk_id: Optional[str] = None
     
     class Settings:
         name = "webinar_assets"

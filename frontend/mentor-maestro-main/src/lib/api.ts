@@ -11,6 +11,11 @@ export interface WebinarAsset {
   concepts_original?: any[];
   concepts_evaluated?: string;
   concepts_improved?: any[];
+  selected_concept?: any;
+  promotional_images?: any[];
+  video_url?: string;
+  video_talk_id?: string;
+  video_status?: string;
 }
 
 export interface JobStatus {

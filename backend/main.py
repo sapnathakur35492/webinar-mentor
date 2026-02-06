@@ -23,7 +23,10 @@ from api.routers import webinar
 app = FastAPI(title="Change 2.0 WebinarAgent.ai", version="2.0.0")
 
 # Mount static files for avatars
-app.mount("/static", StaticFiles(directory="static"), name="static")
+static_dir = os.path.join(os.path.dirname(__file__), "static")
+if not os.path.exists(static_dir):
+    os.makedirs(static_dir)
+app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 
 # CORS

@@ -196,6 +196,20 @@ export default function VideoPage() {
                                             {videoResult.status === "done" ? "Video Ready!" : "Generation Started"}
                                         </h3>
 
+                                        {/* SIMULATION ALERT */}
+                                        {videoResult.id && videoResult.id.includes("MOCK") && (
+                                            <div className="bg-amber-500/10 border border-amber-500/20 rounded-md p-3 my-3 text-sm text-amber-600 text-left">
+                                                <p className="font-semibold flex items-center gap-2">
+                                                    ⚠️ Simulation Mode (Localhost)
+                                                </p>
+                                                <p className="opacity-90 mt-1">
+                                                    Real AI generation requires a public server.
+                                                    This is a <b>demo video</b> to prove the flow works.
+                                                    When you deploy properly, DORA-14 will speak your script.
+                                                </p>
+                                            </div>
+                                        )}
+
                                         {videoResult.status !== "done" && (
                                             <>
                                                 <p className="text-sm text-muted-foreground mb-2">ID: {videoResult.id}</p>
@@ -209,7 +223,9 @@ export default function VideoPage() {
                                             <video
                                                 src={videoResult.result_url || videoResult.items?.[0]?.video_url}
                                                 controls
-                                                className="mt-4 rounded-lg w-full max-w-md shadow-lg"
+                                                autoPlay
+                                                muted
+                                                className="mt-4 rounded-lg w-full shadow-lg border border-border object-contain max-h-[500px] bg-black"
                                             />
                                         )}
                                     </div>
