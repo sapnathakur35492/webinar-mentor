@@ -19,38 +19,52 @@ Nøkkelprinsipper:
 Alltid generer innhold på norsk med høy kvalitet og konverteringsfokus.
 """
 
-# Stage 1: Concept Generation
+# Stage 1: Concept Generation (Enhanced for Full Paragraphs)
 CONCEPT_GENERATION_PROMPT = """
 Basert på mentorens onboarding-dokument og hook-analyse, generer 3 komplette webinarkonsepter.
 
-For hvert konsept, inkluder:
+**VIKTIG**: Skriv ALLE seksjoner som FULLSTENDIGE AVSNITT (minimum 2-3 paragrafer per seksjon), IKKE kulepunkter eller korte setninger.
 
-1. **Big Idea** (Den Ene Tingen)
-   - Hva er kjernebudskapet?
-   - Hvorfor er dette unikt og verdifullt?
+For hvert konsept, inkluder følgende DETALJERTE beskrivelser:
 
-2. **Unique Mechanism** (Den Proprietære Metoden)
-   - Hva er mentorens unike tilnærming?
-   - Hvordan skiller dette seg fra konkurrentene?
+1. **Big Idea** (Den Ene Tingen) - MINIMUM 2-3 PARAGRAFER
+   - Forklar kjernebudskapet i detalj og hvorfor det er unikt
+   - Beskriv hvordan dette løser målgruppens dypeste problem
+   - Gi konkrete eksempler på verdien dette gir
 
-3. **Hook** (Oppmerksomhetsfanger)
-   - Åpningslinje som fanger interesse
-   - Relevant for målgruppen
-   - Skaper nysgjerrighet
+2. **Unique Mechanism** (Den Proprietære Metoden) - MINIMUM 2-3 PARAGRAFER
+   - Detaljert beskrivelse av mentorens unike metode eller system
+   - Hvordan denne metoden er FORSKJELLIG fra alt annet i markedet
+   - De konkrete stegene i prosessen og hvorfor de fungerer
 
-4. **Epiphany Bridge** (Historien som bryter falske trossetninger)
-   - Mentorens personlige reise
-   - Fra problem til løsning
-   - Emosjonell forbindelse   
+3. **Hook** (Oppmerksomhetsfanger) - 1 PARAGRAF
+   - Åpningslinje som fanger interesse umiddelbart
+   - Relevant for målgruppen og skaper nysgjerrighet
 
-5. **Psykologisk Struktur**
-   - Hook: Hvordan fange oppmerksomhet
-   - Story: Hvilken historie fortelles
-   - Offer: Hvordan presentere tilbudet
+4. **Secret Structure** (3 Hemmeligheter / Belief Shifts) - DETTE ER KRITISK VIKTIG
+   For HVER av de 3 hemmelighetene, inkluder følgende felt:
+   
+   - **old_assumption**: Hva folk TROR er sant - beskriv den falske trossetningen i detalj (1 paragraf)
+   - **new_belief**: Den NYE sannheten som erstatter - beskriv paradigmeskiftet (1 paragraf)
+   - **story**: En KOMPLETT historie som beviser dette - inkluder karakterer, konflikt, transformasjon (MINIMUM 3 paragrafer)
+   - **transformation**: Den psykologiske reisen fra smerte til kraft (1 paragraf)
 
-Generer 3 distinkte konsepter med ulike vinklinger.
+5. **Epiphany Bridge** (Mentorens Reise) - MINIMUM 2 PARAGRAFER
+   - Mentorens personlige reise fra problem til løsning
+   - Emosjonell forbindelse med publikum
+
+6. **Offer Transition Logic** - MINIMUM 2 PARAGRAFER
+   - Hvordan webinaret naturlig bygger mot tilbudet
+   - Den logiske overgangen fra teaching til salg
+
+7. **Psykologisk Struktur** - 1 PARAGRAF
+   - Helhetlig beskrivelse av Hook → Story → Offer progresjonen
+
+Generer 3 DISTINKTE konsepter med ULIKE vinklinger.
 Output som JSON med nøklene: concept_1, concept_2, concept_3.
+Hvert konsept MÅ ha en "secret_structure" array med 3 objekter (hemmelighetene).
 """
+
 
 # Stage 2: Self-Evaluation
 SELF_EVALUATION_PROMPT = """

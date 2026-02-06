@@ -13,22 +13,28 @@ const Toaster = ({ ...props }: ToasterProps) => {
       position="top-center"
       offset={80}
       richColors
-      expand={true}
+      expand={false}
+      visibleToasts={3}
+      gap={12}
       closeButton
       toastOptions={{
         duration: 4000,
+        style: {
+          background: 'rgba(255, 255, 255, 0.9)',
+          backdropFilter: 'blur(8px)',
+        },
         classNames: {
           toast:
-            "group toast group-[.toaster]:bg-white group-[.toaster]:text-gray-900 group-[.toaster]:border-2 group-[.toaster]:border-gray-200 group-[.toaster]:shadow-2xl group-[.toaster]:rounded-xl group-[.toaster]:py-4 group-[.toaster]:px-5 group-[.toaster]:min-w-[350px]",
-          title: "group-[.toast]:font-bold group-[.toast]:text-base",
-          description: "group-[.toast]:text-gray-600 group-[.toast]:text-sm",
-          actionButton: "group-[.toast]:bg-[#8ABD41] group-[.toast]:text-white group-[.toast]:font-semibold",
+            "group toast group-[.toaster]:bg-white group-[.toaster]:text-gray-900 group-[.toaster]:border group-[.toaster]:border-gray-200 group-[.toaster]:shadow-[0_8px_30px_rgb(0,0,0,0.12)] group-[.toaster]:rounded-2xl group-[.toaster]:py-5 group-[.toaster]:px-6 group-[.toaster]:min-w-[380px] transition-all duration-300",
+          title: "group-[.toast]:font-bold group-[.toast]:text-base group-[.toast]:tracking-tight",
+          description: "group-[.toast]:text-gray-500 group-[.toast]:text-sm group-[.toast]:mt-1",
+          actionButton: "group-[.toast]:bg-[#3bba69] group-[.toast]:text-white group-[.toast]:font-semibold",
           cancelButton: "group-[.toast]:bg-gray-100 group-[.toast]:text-gray-600",
-          closeButton: "group-[.toast]:bg-gray-100 group-[.toast]:text-gray-600 group-[.toast]:border-gray-300",
-          success: "group-[.toaster]:!bg-emerald-50 group-[.toaster]:!text-emerald-800 group-[.toaster]:!border-emerald-400 group-[.toaster]:!border-2",
-          error: "group-[.toaster]:!bg-red-50 group-[.toaster]:!text-red-800 group-[.toaster]:!border-red-400 group-[.toaster]:!border-2",
-          warning: "group-[.toaster]:!bg-amber-50 group-[.toaster]:!text-amber-800 group-[.toaster]:!border-amber-400 group-[.toaster]:!border-2",
-          info: "group-[.toaster]:!bg-blue-50 group-[.toaster]:!text-blue-800 group-[.toaster]:!border-blue-400 group-[.toaster]:!border-2",
+          closeButton: "group-[.toast]:bg-white group-[.toast]:text-gray-400 group-[.toast]:border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity",
+          success: "group-[.toaster]:!bg-emerald-50 group-[.toaster]:!text-emerald-900 group-[.toaster]:!border-emerald-200 group-[.toaster]:!shadow-[0_8px_30px_rgb(16,185,129,0.1)]",
+          error: "group-[.toaster]:!bg-rose-50 group-[.toaster]:!text-rose-900 group-[.toaster]:!border-rose-200 group-[.toaster]:!shadow-[0_8px_30px_rgb(244,63,94,0.1)]",
+          warning: "group-[.toaster]:!bg-amber-50 group-[.toaster]:!text-amber-900 group-[.toaster]:!border-amber-200",
+          info: "group-[.toaster]:!bg-sky-50 group-[.toaster]:!text-sky-900 group-[.toaster]:!border-sky-200 group-[.toaster]:!shadow-[0_8px_30px_rgb(14,165,233,0.1)]",
         },
       }}
       {...props}

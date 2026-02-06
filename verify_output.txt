@@ -1,0 +1,29 @@
+C:\Users\Santosh\AppData\Local\Programs\Python\Python310\lib\site-packages\pymongo\pyopenssl_context.py:352: CryptographyDeprecationWarning: Parsed a serial number which wasn't positive (i.e., it was negative or zero), which is disallowed by RFC 5280. Loading this certificate will cause an exception in a future release of cryptography.
+  _crypto.X509.from_cryptography(x509.load_der_x509_certificate(cert))
+DEBUG: WebinarAIService Initialized (CHANGE 2.0 STANDARD - ENGLISH V1)
+--- Change 2.0 Final Pipeline Verification ---
+Connected to DB via init_db()
+Created Test Asset: 6985948fe2994505bdf06caf
+
+--- Phase 1: Concepts (Draft -> Eval -> Improve) ---
+[WebinarAI] MOCK_OPENAI_MODE enabled - using mock concepts
+[WebinarAI] Asset saved with MOCK concepts (reason: MOCK_OPENAI_MODE)
+Generated 3 improved concepts.
+Concept Title: Den Transformasjonsdrevne Mentoren
+Narrative Angle Present: True
+Offer Transition Logic Present: True
+[OK] Big Idea is long-form (Change 2.0 requirement)
+Selected Concept #1
+
+--- Phase 2: Structure ---
+Structure length: 119 chars
+[OK] Structure seems to follow the outline format
+
+--- Phase 3: Emails (Strategy -> Draft -> Eval -> Improve) ---
+[OK] Generated 2 emails
+First Email Segment: pre_webinar
+First Email Purpose: Reminder
+First Email Body Length: 44 chars
+[OK] Email categorization metadata present
+
+--- [DONE] Verification Complete ---

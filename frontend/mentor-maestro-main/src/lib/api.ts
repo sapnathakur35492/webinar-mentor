@@ -30,7 +30,7 @@ export const api = {
     mentorId: string,
     onboardingDoc: string,
     hookAnalysis: string,
-    file?: File,
+    files?: File[],
     onProgress?: (progress: number) => void
   ) => {
     const formData = new FormData();
@@ -38,8 +38,10 @@ export const api = {
     formData.append('onboarding_doc', onboardingDoc || "Generated from profile");
     formData.append('hook_analysis', hookAnalysis || "Pending analysis");
 
-    if (file) {
-      formData.append('file', file);
+    if (files && files.length > 0) {
+      files.forEach(file => {
+        formData.append('files', file);
+      });
     }
 
     // Call Python Backend - Now returns immediately with job_id
@@ -54,6 +56,7 @@ export const api = {
     });
     return response.data; // { status: "accepted", job_id: "...", message: "..." }
   },
+
 
   // 1.5 Get Job Status (for polling background jobs)
   getJobStatus: async (jobId: string): Promise<JobStatus> => {

@@ -21,8 +21,13 @@ import {
   ArrowRight,
   ArrowLeft,
   Sparkles,
-  Rocket
+  Rocket,
+  Video,
+  X,
+  File as LucideFile
 } from "lucide-react";
+
+
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
@@ -54,6 +59,9 @@ export default function Setup() {
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+
 
   // Determine initial step based on profile stage
   useEffect(() => {
@@ -120,19 +128,98 @@ export default function Setup() {
   // State to hold the uploaded file object for API submission
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
+  // File type detection helper
+  const getFileTypeInfo = (filename: string): { icon: any, color: string, bg: string, label: string } => {
+    const ext = filename.split('.').pop()?.toLowerCase() || '';
+    if (['pdf'].includes(ext)) return { icon: FileText, color: 'text-red-400', bg: 'bg-red-500/20', label: 'PDF' };
+    if (['doc', 'docx', 'txt'].includes(ext)) return { icon: FileText, color: 'text-blue-400', bg: 'bg-blue-500/20', label: 'Document' };
+    if (['mp4', 'mov', 'webm', 'avi'].includes(ext)) return { icon: Video, color: 'text-purple-400', bg: 'bg-purple-500/20', label: 'Video' };
+    if (['srt', 'vtt'].includes(ext)) return { icon: LucideFile, color: 'text-green-400', bg: 'bg-green-500/20', label: 'Transcript' };
+    return { icon: LucideFile, color: 'text-gray-400', bg: 'bg-gray-500/20', label: 'File' };
+  };
+
+
+
+  // AI Suggestions based on file types
+  const getAIInsight = (files: File[]) => {
+    if (files.length === 0) return null;
+
+    const hasVideo = files.some(f => ['mp4', 'mov', 'webm', 'avi'].includes(f.name.split('.').pop()?.toLowerCase() || ''));
+    const hasPDF = files.some(f => ['pdf'].includes(f.name.split('.').pop()?.toLowerCase() || ''));
+    const hasTranscript = files.some(f => ['srt', 'vtt', 'txt'].includes(f.name.split('.').pop()?.toLowerCase() || ''));
+
+    if (hasVideo && hasPDF) return "Combining your visual method with structured data for a hyper-personalized webinar strategy.";
+    if (hasVideo) return "AI will analyze your meeting recording to extract high-converting hooks and your unique coaching voice.";
+    if (hasPDF) return "We'll deep-scan your frameworks to ensure the webinar structure is technically grounded and authoritative.";
+    if (hasTranscript) return "Transcripts will be used to map out specific audience objections and your proven rebuttals.";
+
+    return "Analyzing your provided documents to align the webinar with your established business philosophy.";
+  };
+
+  // Drag and Drop handlers
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const droppedFiles = Array.from(e.dataTransfer.files);
+    if (droppedFiles.length > 0) {
+      // Add to existing files
+      setSelectedFiles(prev => [...prev, ...droppedFiles]);
+      // Set first file for legacy compatibility
+      if (!selectedFile) {
+        setSelectedFile(droppedFiles[0]);
+      }
+      toast.success(`📁 ${droppedFiles.length} file(s) added`, {
+        description: droppedFiles.map(f => f.name).join(', '),
+        duration: 4000,
+      });
+    }
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    // For MVP, we just take the first file and store it in state
-    // In a full version, we might support multiple files
-    const file = files[0];
-    setSelectedFile(file);
-    toast.info(`📄 ${file.name}`, {
-      description: "File ready to upload! Click 'Generate Magic' to proceed.",
-      duration: 5000,
+    const newFiles = Array.from(files);
+    setSelectedFiles(prev => [...prev, ...newFiles]);
+
+    // Set first file for legacy compatibility
+    if (!selectedFile) {
+      setSelectedFile(newFiles[0]);
+    }
+
+    toast.success(`📁 ${newFiles.length} file(s) added`, {
+      description: newFiles.map(f => f.name).join(', '),
+      duration: 4000,
     });
   };
+
+  const removeFile = (index: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+    if (selectedFiles.length === 1) {
+      setSelectedFile(null);
+    }
+  };
+
 
   const handleCompleteSetup = async () => {
     setIsSaving(true);
@@ -142,7 +229,9 @@ export default function Setup() {
       const onboardingContext = JSON.stringify(formData, null, 2);
 
       // 2. Call Python Backend - Now returns immediately with job_id
-      toast.info("Uploading context to AI Brain...");
+      const loadingToastId = toast.info("Uploading context to AI Brain...", {
+        duration: Infinity,
+      });
 
       const { api } = await import("@/lib/api");
 
@@ -153,6 +242,9 @@ export default function Setup() {
         selectedFile || undefined,
         (progress) => setUploadProgress(progress)
       );
+
+      // Dismiss the initial loading toast
+      toast.dismiss(loadingToastId);
 
       // NEW: Handle async response with job_id
       if (result.status === "accepted" && result.job_id) {
@@ -195,7 +287,8 @@ export default function Setup() {
             // Still processing - show status update
             if (pollCount % 3 === 0) { // Update toast every 15 seconds
               toast.info(`🔄 ${jobStatus.message}`, {
-                duration: 3000
+                duration: 4000,
+                id: `poll-${result.job_id}` // Unique ID to update same toast
               });
             }
 
@@ -434,57 +527,143 @@ export default function Setup() {
               </p>
             </div>
 
-            {/* Upload Zone - Dark Theme */}
-            <label className="block cursor-pointer group">
-              <div
-                className="rounded-xl border-2 border-dashed border-white/20 p-10 text-center transition-all duration-300 hover:border-[#3bba69]/50"
-                style={{ backgroundColor: '#142721' }}
-              >
+            {/* Upload Zone - Drag and Drop with Visual Feedback */}
+            <div
+              onDragOver={handleDragOver}
+              onDragEnter={handleDragEnter}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              className={cn(
+                "rounded-xl border-2 border-dashed p-10 text-center transition-all duration-300 cursor-pointer group",
+                isDragging
+                  ? "border-[#3bba69] bg-[#3bba69]/10 scale-[1.02]"
+                  : "border-white/20 hover:border-[#3bba69]/50"
+              )}
+              style={{ backgroundColor: isDragging ? 'rgba(59, 186, 105, 0.1)' : '#142721' }}
+            >
+              <label className="block cursor-pointer">
                 <div className="flex flex-col items-center gap-4">
-                  <div className="h-16 w-16 rounded-full bg-[#3bba69]/20 flex items-center justify-center">
-                    <Upload className="h-8 w-8 text-[#3bba69]" />
+                  <div className={cn(
+                    "h-16 w-16 rounded-full flex items-center justify-center transition-all duration-300",
+                    isDragging ? "bg-[#3bba69]/40 scale-110" : "bg-[#3bba69]/20"
+                  )}>
+                    <Upload className={cn(
+                      "h-8 w-8 transition-all duration-300",
+                      isDragging ? "text-white" : "text-[#3bba69]"
+                    )} />
                   </div>
                   <div>
                     <p className="text-lg font-semibold text-white">
-                      {isUploading ? "Uploading..." : "Click to upload files"}
+                      {isDragging
+                        ? "Drop files here!"
+                        : isUploading
+                          ? "Uploading..."
+                          : "Drag & Drop or Click to Upload"}
                     </p>
                     <p className="text-white/50 mt-1 text-sm">
-                      PDFs, DOCX, or key text files
+                      PDF, DOCX, TXT, Videos (.mp4, .mov), Transcripts (.srt, .vtt)
+                    </p>
+                    <div className="flex justify-center gap-4 mt-3">
+                      <span className="text-xs text-red-400">📄 PDF</span>
+                      <span className="text-xs text-blue-400">📝 Docs</span>
+                      <span className="text-xs text-purple-400">🎥 Video</span>
+                      <span className="text-xs text-green-400">🎤 Transcript</span>
+                    </div>
+                  </div>
+                </div>
+                <input
+                  type="file"
+                  multiple
+                  accept=".pdf,.doc,.docx,.txt,.mp4,.mov,.webm,.avi,.srt,.vtt"
+                  className="hidden"
+                  onChange={handleFileUpload}
+                  disabled={isUploading}
+                />
+              </label>
+            </div>
+
+
+            {/* AI Insight Box - Dynamic Suggestion */}
+            {selectedFiles.length > 0 && (
+              <div className="rounded-xl p-4 border border-[#3bba69]/30 bg-[#3bba69]/5 animate-in zoom-in-95 duration-500">
+                <div className="flex items-start gap-4">
+                  <div className="h-10 w-10 rounded-full bg-[#3bba69]/20 flex items-center justify-center shrink-0">
+                    <Sparkles className="h-5 w-5 text-[#3bba69] animate-pulse" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-semibold text-white flex items-center gap-2">
+                      AI Professional Insight
+                      <span className="text-[10px] bg-[#3bba69]/20 text-[#3bba69] px-2 py-0.5 rounded-full uppercase tracking-wider">Active</span>
+                    </h4>
+                    <p className="text-sm text-[#3bba69]/80 mt-1 leading-relaxed">
+                      {getAIInsight(selectedFiles)}
                     </p>
                   </div>
                 </div>
               </div>
-              <input
-                type="file"
-                multiple
-                className="hidden"
-                onChange={handleFileUpload}
-                disabled={isUploading}
-              />
-            </label>
+            )}
 
-            {/* Uploaded Files List - Dark Theme */}
-            {documents.length > 0 && (
+            {/* Selected Files Preview (New files to be uploaded) */}
+
+            {selectedFiles.length > 0 && (
               <div className="space-y-2">
-                <h3 className="font-medium text-white text-sm px-1">Uploaded Files</h3>
-                {documents.map((doc) => (
-                  <div
-                    key={doc.id}
-                    className="flex items-center gap-3 p-3 rounded-lg border border-white/10"
-                    style={{ backgroundColor: '#142721' }}
-                  >
-                    <div className="h-8 w-8 rounded-lg bg-red-500/20 flex items-center justify-center shrink-0">
-                      <FileText className="h-4 w-4 text-red-400" />
+                <h3 className="font-medium text-white text-sm px-1">Files to Upload ({selectedFiles.length})</h3>
+                {selectedFiles.map((file, index) => {
+                  const fileInfo = getFileTypeInfo(file.name);
+                  const FileIcon = fileInfo.icon;
+                  return (
+                    <div
+                      key={`${file.name}-${index}`}
+                      className="flex items-center gap-3 p-3 rounded-lg border border-white/10 animate-in fade-in slide-in-from-top-2 duration-300"
+                      style={{ backgroundColor: '#142721' }}
+                    >
+                      <div className={`h-8 w-8 rounded-lg ${fileInfo.bg} flex items-center justify-center shrink-0`}>
+                        <FileIcon className={`h-4 w-4 ${fileInfo.color}`} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-white truncate">{file.name}</p>
+                        <p className="text-xs text-white/50">{fileInfo.label} • {(file.size / 1024).toFixed(1)} KB</p>
+                      </div>
+                      <button
+                        onClick={() => removeFile(index)}
+                        className="p-1 rounded-full hover:bg-white/10 transition-colors"
+                        title="Remove file"
+                      >
+                        <X className="h-4 w-4 text-white/50 hover:text-red-400" />
+                      </button>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-white truncate">{doc.name}</p>
-                      <p className="text-xs text-white/50">{doc.file_size}</p>
-                    </div>
-                    <CheckCircle className="h-5 w-5 text-[#3bba69]" />
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
+
+            {/* Previously Uploaded Files List - Dark Theme */}
+            {documents.length > 0 && (
+              <div className="space-y-2">
+                <h3 className="font-medium text-white text-sm px-1">Previously Uploaded</h3>
+                {documents.map((doc) => {
+                  const fileInfo = getFileTypeInfo(doc.name);
+                  const FileIcon = fileInfo.icon;
+                  return (
+                    <div
+                      key={doc.id}
+                      className="flex items-center gap-3 p-3 rounded-lg border border-white/10"
+                      style={{ backgroundColor: '#142721' }}
+                    >
+                      <div className={`h-8 w-8 rounded-lg ${fileInfo.bg} flex items-center justify-center shrink-0`}>
+                        <FileIcon className={`h-4 w-4 ${fileInfo.color}`} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-white truncate">{doc.name}</p>
+                        <p className="text-xs text-white/50">{doc.file_size}</p>
+                      </div>
+                      <CheckCircle className="h-5 w-5 text-[#3bba69]" />
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
 
             {/* Pro Tip - Dark Theme */}
             <div className="rounded-lg p-4 border border-[#3bba69]/20" style={{ backgroundColor: 'rgba(59, 186, 105, 0.1)' }}>

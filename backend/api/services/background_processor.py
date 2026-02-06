@@ -21,11 +21,10 @@ class BackgroundProcessor:
         mentor_id: str, 
         onboarding_doc: str, 
         hook_analysis: str,
-        file_bytes: Optional[bytes] = None,
-        filename: Optional[str] = None
+        files_data: Optional[list] = None
     ):
         """
-        Background task for PDF processing.
+        Background task for multi-file processing.
         This runs after the HTTP response is sent.
         """
         try:
@@ -38,24 +37,33 @@ class BackgroundProcessor:
             # Update status to processing
             job.status = "processing"
             job.progress = 10
-            job.message = "Extracting text from PDF..."
+            job.message = "Analyzing uploaded materials..."
             job.updated_at = datetime.utcnow()
             await job.save()
             
-            # Step 1: Extract text from PDF if provided
-            extracted_text = ""
-            if file_bytes and filename:
-                job.progress = 20
-                job.message = "Reading PDF content..."
-                await job.save()
+            # Step 1: Extract text from multiple files
+            all_extracted_text = []
+            if files_data:
+                for idx, file_info in enumerate(files_data):
+                    f_bytes = file_info.get("bytes")
+                    f_name = file_info.get("filename")
+                    
+                    if f_bytes and f_name:
+                        job.progress = 10 + int((idx / len(files_data)) * 30)
+                        job.message = f"Extracting text from {f_name}..."
+                        await job.save()
+                        
+                        extracted = await webinar_ai_service.extract_text_from_file(f_bytes, f_name)
+                        if extracted:
+                            all_extracted_text.append(f"--- [EXTRACTED FROM {f_name}] ---\n{extracted}")
                 
-                extracted_text = await webinar_ai_service.extract_text_from_file(file_bytes, filename)
-                if extracted_text:
-                    onboarding_doc = f"{onboarding_doc}\n\n[EXTRACTED FROM {filename}]:\n{extracted_text}"
+                if all_extracted_text:
+                    onboarding_doc = f"{onboarding_doc}\n\n" + "\n\n".join(all_extracted_text)
             
-            job.progress = 30
-            job.message = "Saving document to database..."
+            job.progress = 40
+            job.message = "Materials synced. Saving to database..."
             await job.save()
+
             
             # Step 2: Create WebinarAsset
             asset = WebinarAsset(

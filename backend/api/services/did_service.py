@@ -13,8 +13,14 @@ class DIDService:
         base64_creds = base64.b64encode(creds_bytes).decode("utf-8")
         self.auth_header = f"Basic {base64_creds}"
         self.base_url = "https://api.d-id.com"
+        # Avatar URL pointing to our backend static folder
+        from core.settings import settings
+        self.default_avatar_url = f"{settings.BASE_URL}/static/avatars/DORA-14.jpg"
 
-    def create_talk(self, text: str, source_url: str = "https://clips-presenters.d-id.com/matt/image.png"):
+    def create_talk(self, text: str, source_url: str = None):
+        if not source_url:
+            source_url = self.default_avatar_url
+
         url = f"{self.base_url}/talks"
         
         payload = {

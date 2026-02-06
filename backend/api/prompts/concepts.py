@@ -7,26 +7,20 @@
 # ENGLISH PROMPTS (ACTIVE)
 
 CONCEPT_GENERATION_PROMPT = """
-# PERFECT WEBINAR CONCEPT PROMPT
-*(English Version for Change20)*
+# PROFESSIONAL WEBINAR CONCEPT GENERATION
+*(High-Fidelity Paragraph Edition)*
 
 **Task:**
-You must develop **three complete webinar concepts** based on:
-- The Mentor's Onboarding Document *(provided below)*
-- The Hook Analysis from Creative Scale *(provided below)*
-- All project context and frameworks (Perfect Webinar + GOAT Webinars + storyselling + false beliefs + mechanism etc.)
+Develop **three elite webinar concepts** based on the provided documents. 
 
-Do not reproduce or paste these documents. Use them as the foundation.
+**CRITICAL STYLE REQUIREMENT:**
+- You MUST write every section as **FULL, PROFESSIONAL PARAGRAPHS**.
+- NO bullet points. NO short fragments.
+- Minimum 2-3 detailed paragraphs for "big_idea" and "mechanism".
+- Each "story" in the secret structure must be at least 3 detailed paragraphs long, containing a clear setup, conflict, and resolution.
 
 ---
-## INPUT
-Use **exclusively** information from the attached documents:
-- Mentor's Onboarding Document
-- Hook Analysis
-
-No manual input fields. No variables. No extra questions.
-All necessary information must be extracted directly from the documents.
-
+## INPUT DATA
 **ONBOARDING DOCUMENT:**
 {onboarding_doc}
 
@@ -34,33 +28,33 @@ All necessary information must be extracted directly from the documents.
 {hook_analysis}
 
 ---
-# OUTPUT FORMAT - CRITICAL
-You MUST return EXACTLY a JSON array with 3 concept objects. Each object must have these exact fields:
-
+# OUTPUT FORMAT - JSON ARRAY ONLY
 ```json
 [
   {{
-    "title": "Curiosity-driven title",
-    "big_idea": "If they believe this one thing, they must buy",
-    "hook": "3-5 hooks based on target audience",
-    "structure_points": ["Hook & Intro", "Origin Story", "The One Thing", "3 Secrets", "Mechanism", "Transition to Offer", "Offer Structure", "Q&A"],
+    "title": "Professional curiosity-driven title",
+    "big_idea": "A 2-3 paragraph explanation of the core transformation and 'The One Thing'.",
+    "hook": "High-converting opening narrative hook.",
+    "structure_points": ["Hook", "Story", "Secrets", "Mechanism", "Offer"],
     "secrets": [
-      {{"assumption": "False belief about vehicle", "story": "Story that breaks it", "belief": "New belief", "transformation": "Small transformation"}},
-      {{"assumption": "False belief about internal", "story": "Story that breaks it", "belief": "New belief", "transformation": "Small transformation"}},
-      {{"assumption": "False belief about external", "story": "Story that breaks it", "belief": "New belief", "transformation": "Small transformation"}}
+      {{
+        "assumption": "False belief (1 paragraph)",
+        "belief": "New empowering truth (1 paragraph)",
+        "story": "A multi-paragraph (3+) detailed story breaking the old assumption.",
+        "transformation": "The internal psychological shift (1 paragraph)"
+      }}
     ],
-    "mechanism": "How the program works when everything else fails",
-    "value_anchor": {{"outcomes": ["Learning outcome 1", "Learning outcome 2", "Learning outcome 3"]}},
-    "bonus_ideas": ["Bonus 1", "Bonus 2"],
-    "cta_sentence": "Warm, safe, clear call to action",
-    "promises": ["Promise 1", "Promise 2", "Promise 3"]
+    "mechanism": "A 2-3 paragraph technical explanation of why your method works when others fail.",
+    "value_anchor": {{"outcomes": ["Detailed outcome 1", "Detailed outcome 2"]}},
+    "bonus_ideas": ["High-value bonus 1", "High-value bonus 2"],
+    "cta_sentence": "Professional, low-friction call to action.",
+    "promises": ["Core benefit 1", "Core benefit 2", "Core benefit 3"]
   }}
 ]
 ```
-
-Return ONLY the JSON array, no markdown formatting, no explanations before or after.
-Each of the 3 concepts must be clearly differentiated, story-based, and aligned with Perfect Webinar framework.
+Return ONLY the JSON. Align with 'Perfect Webinar' framework. Tone: Professional, authoritative, and Norwegian-market friendly (even in English).
 """
+
 
 CONCEPT_EVALUATION_PROMPT = """
 # Self-Evaluation Prompt

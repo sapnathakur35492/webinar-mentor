@@ -55,6 +55,9 @@ export default function Structure() {
   const queryClient = useQueryClient();
 
   const [generatingImage, setGeneratingImage] = useState<string | null>(null);
+  const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
+  const [selectedAvatar, setSelectedAvatar] = useState("DORA-14.jpg");
+  const [videoResult, setVideoResult] = useState<any>(null);
   const [isGeneratingStructure, setIsGeneratingStructure] = useState(false);
   const [submittingAll, setSubmittingAll] = useState(false);
   const [generatedImages, setGeneratedImages] = useState<Record<string, string>>({});
@@ -131,6 +134,71 @@ export default function Structure() {
 
   const getMediaByType = (type: string) => media.find(m => m.media_type === type);
 
+  // --- Video Generation ---
+  const handleGenerateVideo = async () => {
+    if (!finalConcept?.id) {
+      toast.error("Please approve a concept first");
+      return;
+    }
+
+    setIsGeneratingVideo(true);
+    setVideoResult(null);
+    try {
+      const assetId = localStorage.getItem("current_asset_id");
+      if (!assetId) throw new Error("No asset ID found");
+
+      // Use the selected avatar (it's just the filename, backend handles the URL)
+      // Actually, let's pass the full URL if we want to be explicit, 
+      // but did_service.py now has a default pointing to DORA-14.jpg
+
+      const response = await api.generateVideo(assetId, undefined, undefined);
+
+      if (response.status === "success" && response.data?.id) {
+        toast.info("Video generation started! This may take 2-4 minutes.");
+        setVideoResult(response.data);
+
+        // Polling for video result
+        let polls = 0;
+        const maxPolls = 30; // 5 minutes
+
+        const pollVideo = async () => {
+          try {
+            const statusResponse = await api.getVideoStatus(response.data.id);
+            console.log("Video status:", statusResponse.status);
+
+            if (statusResponse.status === "completed") {
+              setVideoResult(statusResponse);
+              toast.success("✨ AI Video is ready!");
+              setIsGeneratingVideo(false);
+            } else if (statusResponse.status === "error" || statusResponse.status === "failed") {
+              throw new Error(statusResponse.error?.message || "D-ID Generation failed");
+            } else {
+              polls++;
+              if (polls < maxPolls) {
+                setTimeout(pollVideo, 10000); // Poll every 10s
+              } else {
+                throw new Error("Video generation timed out. Please refresh later.");
+              }
+            }
+          } catch (e: any) {
+            console.error("Video poll error:", e);
+            toast.error(e.message || "Failed to get video status");
+            setIsGeneratingVideo(false);
+          }
+        };
+
+        // Start polling after 10 seconds
+        setTimeout(pollVideo, 10000);
+      } else {
+        throw new Error("Failed to start video generation");
+      }
+    } catch (error: any) {
+      console.error("Video gen error:", error);
+      toast.error(error.message || "Failed to generate video");
+      setIsGeneratingVideo(false);
+    }
+  };
+
   // --- Submissions ---
   const handleSubmitAllForApproval = async () => {
     setSubmittingAll(true);
@@ -145,7 +213,7 @@ export default function Structure() {
       }
       for (const m of media) {
         if (!m.submitted_for_approval_at) {
-          await submitMediaForApproval.mutateAsync(m.id);
+          await submitMediaForApproval.mutateAsync({ mediaId: m.id });
         }
       }
       toast.success("All content submitted for admin approval!");
@@ -441,6 +509,159 @@ export default function Structure() {
                   </div>
                 );
               })}
+            </div>
+          </div>
+        )}
+
+        {/* --- SECTION 3: VIDEO GENERATION --- */}
+        {canGenerate && (
+          <div className="bg-white rounded-xl border border-border overflow-hidden shadow-sm">
+            <div className="p-6 border-b border-border bg-[#142721] text-white flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <Rocket className="h-6 w-6 text-[#3bba69]" />
+                <div>
+                  <h2 className="text-xl font-bold">AI Video Generation</h2>
+                  <p className="text-white/60 text-sm">Create your AI spokesperson video</p>
+                </div>
+              </div>
+              {videoResult?.status === "completed" && (
+                <Badge className="bg-[#3bba69] text-white">Ready</Badge>
+              )}
+            </div>
+
+            <div className="p-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Left Side: Avatar Selection & Settings */}
+                <div className="space-y-6">
+                  <div>
+                    <h4 className="text-sm font-semibold text-gray-900 mb-4 uppercase tracking-wider">Select AI Avatar</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <button
+                        onClick={() => setSelectedAvatar("DORA-14.jpg")}
+                        className={cn(
+                          "relative rounded-xl overflow-hidden border-2 transition-all p-1",
+                          selectedAvatar === "DORA-14.jpg" ? "border-[#3bba69] bg-[#3bba69]/5 shadow-md" : "border-transparent bg-gray-50 hover:bg-gray-100"
+                        )}
+                      >
+                        <div className="aspect-square rounded-lg overflow-hidden bg-gray-200">
+                          <img
+                            src="http://localhost:8000/static/avatars/DORA-14.jpg"
+                            alt="DORA-14"
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              // Fallback if local server not running or image missing
+                              (e.target as HTMLImageElement).src = "https://clips-presenters.d-id.com/matt/image.png";
+                            }}
+                          />
+                        </div>
+                        <div className="p-2 text-center">
+                          <p className="text-xs font-bold text-gray-900">DORA-14</p>
+                          <p className="text-[10px] text-gray-500">Professional Host</p>
+                        </div>
+                        {selectedAvatar === "DORA-14.jpg" && (
+                          <div className="absolute top-2 right-2 bg-[#3bba69] text-white rounded-full p-0.5 shadow-sm">
+                            <CheckCircle2 className="h-3 w-3" />
+                          </div>
+                        )}
+                      </button>
+
+                      <button
+                        disabled
+                        className="relative rounded-xl overflow-hidden border-2 border-transparent bg-gray-50 p-1 opacity-50 grayscale cursor-not-allowed"
+                      >
+                        <div className="aspect-square rounded-lg overflow-hidden bg-gray-200 flex items-center justify-center">
+                          <User className="h-8 w-8 text-gray-400" />
+                        </div>
+                        <div className="p-2 text-center">
+                          <p className="text-xs font-bold text-gray-900">Custom Avatar</p>
+                          <p className="text-[10px] text-gray-500">Coming Soon</p>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="bg-blue-50 border border-blue-100 rounded-lg p-4">
+                    <div className="flex gap-3">
+                      <Clock className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-semibold text-blue-900">Script Preview</p>
+                        <p className="text-xs text-blue-700 mt-1 line-clamp-3 italic">
+                          {finalConcept?.secret_structure ? "Your webinar structure points have been converted into an AI spokesperson script..." : "Generate your structure first to see the script preview."}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Button
+                    onClick={handleGenerateVideo}
+                    disabled={isGeneratingVideo || !hasStructure}
+                    className="w-full h-12 bg-[#142721] hover:bg-[#1a3c1a] text-[#3bba69] font-bold text-lg shadow-lg border border-[#3bba69]/20"
+                  >
+                    {isGeneratingVideo ? (
+                      <>
+                        <RefreshCw className="h-5 w-5 animate-spin mr-2" />
+                        Generating AI Video...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-5 w-5 mr-2" />
+                        Create AI Video
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                {/* Right Side: Video Preview */}
+                <div className="flex flex-col items-center justify-center min-h-[300px] rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 p-4">
+                  {videoResult?.result_url ? (
+                    <div className="w-full space-y-4">
+                      <div className="aspect-video rounded-lg overflow-hidden shadow-2xl bg-black">
+                        <video
+                          src={videoResult.result_url}
+                          controls
+                          className="w-full h-full"
+                          poster="http://localhost:8000/static/avatars/DORA-14.jpg"
+                        />
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200">
+                          <CheckCircle2 className="h-3 w-3 mr-1" /> HD Render Complete
+                        </Badge>
+                        <Button variant="ghost" size="sm" asChild>
+                          <a href={videoResult.result_url} download target="_blank" rel="noopener noreferrer">
+                            <Download className="h-4 w-4 mr-2" /> Download Video
+                          </a>
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center space-y-3">
+                      {isGeneratingVideo ? (
+                        <div className="flex flex-col items-center gap-4">
+                          <div className="relative">
+                            <div className="h-20 w-20 rounded-full border-4 border-[#3bba69]/20 border-t-[#3bba69] animate-spin" />
+                            <Sparkles className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-8 w-8 text-[#3bba69]" />
+                          </div>
+                          <div>
+                            <p className="font-bold text-gray-900">Rendering AI Spokesperson...</p>
+                            <p className="text-sm text-gray-500">This usually takes 2-4 minutes</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <Rocket className="h-16 w-16 text-gray-200 mx-auto" />
+                          <div>
+                            <p className="text-lg font-bold text-gray-900">Video Preview</p>
+                            <p className="text-sm text-gray-500 max-w-xs mx-auto">
+                              Your generated AI video will appear here. Choose your avatar and click "Create AI Video" to start.
+                            </p>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         )}

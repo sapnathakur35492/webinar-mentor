@@ -1,10 +1,9 @@
 from fastapi import APIRouter, HTTPException, Body, File, UploadFile, Form, BackgroundTasks
 from pydantic import BaseModel
-from typing import Optional
-from api.services.webinar_ai import webinar_ai_service
+from typing import Optional, List
+from api.models import WebinarAsset, WebinarProcessingJob
 from api.services.background_processor import background_processor
-from api.models import WebinarProcessingJob
-from datetime import datetime
+from api.services.webinar_ai import webinar_ai_service
 
 router = APIRouter()
 
@@ -23,27 +22,31 @@ async def upload_context(
     mentor_id: str = Form(...),
     onboarding_doc: str = Form(...),
     hook_analysis: str = Form(...),
-    file: UploadFile = File(None)
+    files: List[UploadFile] = File(None)
 ):
+
     """
-    Upload PDF context and process in background.
+    Upload context files and process in background.
     Returns immediately with job_id for status polling.
     """
     try:
-        # Read file bytes before returning response
-        file_bytes = None
-        filename = None
-        if file:
-            filename = file.filename
-            file_bytes = await file.read()
+        # Read multiple files
+        files_data = []
+        if files:
+            for file in files:
+                f_bytes = await file.read()
+                files_data.append({
+                    "bytes": f_bytes,
+                    "filename": file.filename
+                })
 
         # Create job record immediately
         job = WebinarProcessingJob(
             mentor_id=mentor_id,
-            job_type="pdf_upload",
+            job_type="multi_upload",
             status="pending",
             progress=5,
-            message="PDF received. Starting background processing..."
+            message="Materials received. Starting background processing..."
         )
         await job.save()
         
@@ -54,9 +57,9 @@ async def upload_context(
             mentor_id,
             onboarding_doc,
             hook_analysis,
-            file_bytes,
-            filename
+            files_data
         )
+
         
         # Return immediately - don't wait for processing!
         return {

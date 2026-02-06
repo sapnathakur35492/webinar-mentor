@@ -277,7 +277,7 @@ export default function Concepts() {
         {/* Header */}
         <div className="flex items-center justify-between animate-slide-up">
           <div>
-            <h1 className="text-2xl font-semibold text-foreground">Webinar Concepts</h1>
+            <h1 className="text-2xl font-semibold text-foreground">Webinar Concepts (LOCAL)</h1>
             <p className="text-muted-foreground mt-1">
               AI-generated concepts based on your profile — review and refine
             </p>

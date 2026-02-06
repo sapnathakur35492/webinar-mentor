@@ -4,11 +4,12 @@
 # ENGLISH PROMPTS (ACTIVE)
 
 CONCEPT_TRANSCRIPT_UPDATE_PROMPT = """
-# Prompt for Implementing Changes from Mentor
+# Prompt for Implementing Changes from Mentor (Change 2.0 Standard)
 *(Paste when meeting minutes/transcript available)*
 
 **Task:**
-You shall improve and update the webinar concept based on the content of the meeting transcript from the mentor. Use the transcript as the most important source for changes, and keep only what is actually supported by the meeting.
+Improve and update the webinar concept based on the meeting transcript with the mentor. 
+The transcript is the primary source; align the concept strictly with the mentor's feedback.
 
 **INPUT:**
 **LATEST CONCEPT:**
@@ -18,15 +19,15 @@ You shall improve and update the webinar concept based on the content of the mee
 {transcript}
 
 **Instructions:**
-- Analyze the meeting content and identify all relevant changes.
-- Remove anything in the concept that the mentor did not resonate with.
-- Strengthen everything the mentor liked.
-- Implement concrete feedback on Big Idea, Hooks, Secrets, Mechanism, Tone.
-- All changes must be explicitly linked to the meeting discussion.
-- Deliver a **finished, optimized webinar concept**.
+- Analyze the meeting content for changes in Big Idea, Hooks, Secrets, and Mechanism.
+- **CRITICAL**: Update the **Narrative Angle** and **Offer Transition Logic** based on the mentor's input.
+- Remove any elements the mentor did not resonate with.
+- Strengthen everything the mentor explicitly liked.
+- Ensure the tone remains professional and Norwegian-market friendly.
+- Maintain the standardized JSON structure for the final output.
 
 **OUTPUT:**
-– One finished, revised webinar concept
+– One finished, revised webinar concept (JSON)
 – Short list of what changes were made
 """
 

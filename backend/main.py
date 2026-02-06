@@ -1,11 +1,13 @@
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from database_mongo import init_db
 from dotenv import load_dotenv
 import os
 
 # Check current directory
-print(f"DEBUG: CWD is {os.getcwd()}")
+print(f"CRITICAL DEBUG: main.py is at {__file__}")
+print(f"CRITICAL DEBUG: CWD is {os.getcwd()}")
 env_path = os.path.join(os.getcwd(), ".env")
 print(f"DEBUG: Loading env from {env_path}")
 load_dotenv(env_path)
@@ -19,6 +21,10 @@ else:
 from api.routers import webinar
 
 app = FastAPI(title="Change 2.0 WebinarAgent.ai", version="2.0.0")
+
+# Mount static files for avatars
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
 
 # CORS
 app.add_middleware(

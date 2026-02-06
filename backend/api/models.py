@@ -54,6 +54,8 @@ class Concept(BaseModel):
     structure_points: List[str]
     secrets: List[Dict[str, str]]  # {assumption, story, belief, transformation}
     mechanism: str
+    narrative_angle: str
+    offer_transition_logic: str
     value_anchor: Dict[str, List[str]] # "After this course..." or "My goal..."
     bonus_ideas: List[str]
     cta_sentence: str
@@ -74,7 +76,7 @@ class EmailDraft(BaseModel):
     segment: str # Registered, No-Show, Attended
     purpose: str
     subject: str
-    preheader: str
+    preview_text: str
     body: str
     cta: str
     tone_analysis: Optional[str] = None
@@ -153,6 +155,7 @@ class WebinarAsset(Document):
     structure_admin_notes: Optional[str] = None
     
     # Step 3: Emails
+    email_plan_content: Optional[str] = None # Raw strategy from AI
     email_plan: Optional[EmailPlan] = None
     email_version: int = 1
     email_approval_status: str = "draft"  # draft, pending, approved, revision_requested

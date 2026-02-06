@@ -71,11 +71,11 @@ export function useWebinarConcepts() {
             version: index + 1,
             status: isFinal ? "approved" : "draft",
             big_idea: c.big_idea || "",
-            hooks: c.hook || c.hooks || "", // Backend field name is 'hook'
+            hooks: c.hook || "", // Backend field name is 'hook'
             secret_structure: c.secrets ? JSON.stringify(c.secrets, null, 2) : "",
             mechanism: c.mechanism || "",
-            narrative_angle: c.title || "", // Mapping title to narrative angle for display
-            offer_transition: c.cta_sentence || "",
+            narrative_angle: c.narrative_angle || "",
+            offer_transition: c.offer_transition_logic || "",
             ai_evaluation: asset.concepts_evaluated || null,
             ai_improvements: null, // Already improved
             mentor_feedback: null,

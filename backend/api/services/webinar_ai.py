@@ -2,10 +2,23 @@ import os
 import json
 import requests
 from api.models import WebinarAsset, Concept, Slide, EmailPlan
-from api.prompts.concepts import CONCEPT_GENERATION_PROMPT, CONCEPT_EVALUATION_PROMPT, CONCEPT_IMPROVEMENT_PROMPT
+from api.prompts.concepts_v2 import (
+    CONCEPT_GENERATION_PROMPT, 
+    CONCEPT_EVALUATION_PROMPT, 
+    CONCEPT_IMPROVEMENT_PROMPT
+)
+from api.prompts.structure_v2 import (
+    STRUCTURE_GENERATION_PROMPT, 
+    STRUCTURE_EVALUATION_PROMPT, 
+    STRUCTURE_IMPROVEMENT_PROMPT
+)
 from api.prompts.refinement import CONCEPT_TRANSCRIPT_UPDATE_PROMPT, STRUCTURE_TRANSCRIPT_UPDATE_PROMPT
-from api.prompts.structure import STRUCTURE_GENERATION_PROMPT, STRUCTURE_EVALUATION_PROMPT, STRUCTURE_IMPROVEMENT_PROMPT
-from api.prompts.emails import EMAIL_PLAN_PROMPT, EMAIL_GENERATION_PROMPT, EMAIL_SELF_EVALUATION_PROMPT, EMAIL_EVALUATION_IMPLEMENTATION_PROMPT
+from api.prompts.emails_v2 import (
+    EMAIL_STRATEGY_PROMPT, 
+    EMAIL_GENERATION_PROMPT, 
+    EMAIL_EVALUATION_PROMPT, 
+    EMAIL_IMPROVEMENT_PROMPT
+)
 # from api.prompts.norwegian_prompts import ... (Commented out)
 from beanie import PydanticObjectId
 from typing import List, Optional
@@ -18,11 +31,13 @@ from core.settings import settings
 OPENAI_API_KEY = settings.OPENAI_API_KEY
 OPENAI_ENDPOINT = "https://api.openai.com/v1/chat/completions"
 # When True, skip OpenAI and use mock concepts (for testing / when quota exhausted)
-USE_MOCK_OPENAI = os.getenv("MOCK_OPENAI_MODE", "false").lower() == "true"
+# USE_MOCK_OPENAI = os.getenv("MOCK_OPENAI_MODE", "false").lower() == "true"
+USE_MOCK_OPENAI = True # FORCED for debugging
 
 class WebinarAIService:
     
     def __init__(self):
+        print("DEBUG: WebinarAIService Initialized (CHANGE 2.0 STANDARD - ENGLISH V1)")
         pass
 
     async def extract_text_from_file(self, file_bytes: bytes, filename: str) -> str:
@@ -33,11 +48,15 @@ class WebinarAIService:
                 for page in reader.pages:
                     text += page.extract_text() + "\n"
                 return text
-            elif filename.lower().endswith(".txt"):
+            elif filename.lower().endswith((".txt", ".srt", ".vtt")):
                 return file_bytes.decode("utf-8")
+            elif filename.lower().endswith(".docx"):
+                import docx
+                doc = docx.Document(io.BytesIO(file_bytes))
+                return "\n".join([para.text for para in doc.paragraphs])
             return ""
         except Exception as e:
-            print(f"Error extracting text: {e}")
+            print(f"Error extracting text from {filename}: {e}")
             return ""
 
     async def create_asset(self, mentor_id: str, onboarding_doc: str, hook_analysis: str, file_bytes: Optional[bytes] = None, filename: Optional[str] = None) -> WebinarAsset:
@@ -55,57 +74,85 @@ class WebinarAIService:
         return asset
 
     def _get_mock_concepts(self) -> List[Concept]:
-        """Return mock concepts for fallback when OpenAI fails (429, quota, etc.)"""
+        """Return professional-grade mock concepts with long-form paragraphs."""
         return [
             Concept(
-                title="The Change 2.0 Framework",
-                big_idea="Automating business transformation using AI",
-                hook="Why manual consulting is dead",
-                structure_points=["The Old Way", "The AI Shift", "The New Reality"],
+                title="Den Transformasjonsdrevne Mentoren",
+                big_idea="Din unike historie er ikke bare en fortelling; det er din mest kraftfulle salgsmaskin. Ved å transformere dine personlige gjennombrudd til en strategisk rammeverk, kan du tiltrekke deg drømmekunder som ser din verdi før du i det hele tatt åpner munnen. Dette handler om å slutte å selge timer, og begynne å selge transformasjon gjennom et psykologisk strukturert budskap som resonnerer med markedets dypeste smertepunkter.",
+                hook="Hvorfor manuelle konsultasjoner bremser din vekst og hvordan du kan skalere din ekspertise uten å ofre din frihet.",
+                structure_points=["Innledning: Hook & Story", "Origin Story: Broen til innsikt", "The One Thing: Ditt fundament", "3 Hemmeligheter: Strategisk skifte", "Mekanismen: Hvordan det virker", "Overgangen til tilbud"],
                 secrets=[
-                    {"assumption": "AI is hard", "belief": "AI is easy", "story": "My grandma can do it", "transformation": "Fear to Power"},
-                    {"assumption": "Time is fixed", "belief": "Time is elastic", "story": "The 4 hour work week", "transformation": "Burnout to Balance"},
-                    {"assumption": "Quality takes time", "belief": "Speed creates quality", "story": "The MVP mindset", "transformation": "Perfectionism to Progress"}
+                    {
+                        "assumption": "Jeg trenger et stort publikum for å lykkes.",
+                        "belief": "Du trenger bare et 'Ready' publikum som forstår din verdi.",
+                        "story": "Da jeg startet, trodde jeg at titusenvis av følgere var nøkkelen. Jeg brukte måneder på å bygge volum, men bankkontoen sto stille. Det var ikke før jeg lærte å spisse budskapet mitt mot de 100 personene som faktisk hadde problemet jeg løste, at alt endret seg. Resultatet var min første 100k måned med under 500 følgere. Dette beviser at relevans trumfer volum hver eneste gang.",
+                        "transformation": "Fra massedistribusjon til målrettet autoritet."
+                    },
+                    {
+                        "assumption": "Salg føles påtrengende og ubehagelig.",
+                        "belief": "Salg er den høyeste formen for tjeneste når du løser et ekte problem.",
+                        "story": "Husk den gangen du hjalp en venn med et problem de hadde kjempet med i årevis. Hvordan føltes det? Det er nøyaktig det et profesjonelt webinar gjør. Du gir dem løsningen før de i det hele tatt har betalt. Ved å skifte fokus fra 'hva jeg får' til 'hva de oppnår', forsvinner alt ubehag. Du er ikke lenger en selger, du er en doktor som skriver ut en livsviktig resept.",
+                        "transformation": "Fra frykt for salg til glede over å bidra."
+                    },
+                    {
+                        "assumption": "Teknologien er for komplisert for meg.",
+                        "belief": "Budskapet ditt er motoren; teknologien er bare karosseriet.",
+                        "story": "Jeg har sett perfekte funnels med dyre verktøy som konverterte null. Og jeg har sett 'stygge' webinarer med enkle slides som genererte millioner. Forskjellen? Den psykologiske strukturen i budskapet. Ikke la mangelen på teknisk innsikt stoppe deg. Med våre rammeverk er den tekniske biten så enkel at du kan fokusere 100% på det som faktisk teller: Å endre liv.",
+                        "transformation": "Fra teknisk forvirring til strategisk klarhet."
+                    }
                 ],
-                mechanism="The Neural Sync Protocol",
-                value_anchor={"price": ["1000"], "comparison": ["100 hours of manual work"]},
-                bonus_ideas=["AI Toolkit", "Prompt Library"],
-                cta_sentence="Join the revolution today",
-                promises=["Save 20 hours/week", "Double revenue"]
+                mechanism="Authority Beacon Framework",
+                narrative_angle="Positioning the mentor as a reluctant hero who discovered a 'flaw' in the industry standard, making their success inevitable.",
+                offer_transition_logic="Moving from the 'One Thing' methodology directly into the support system required to implement it without technical overwhelm.",
+                value_anchor={"price": ["19 997"], "comparison": ["Måneder med prøving og feiling", "Hundretusenvis i tapt omsetning"]},
+                bonus_ideas=["Fullstendig implementeringsguide", "Ukentlig coaching calls"],
+                cta_sentence="Sikre din plass på transformasjonsreisen i dag.",
+                promises=["Skaler din mentorvirksomhet", "Oppnå full geografisk frihet", "Bygg en bærekraftig forretningsmodell"]
             ),
             Concept(
-                title="Webinar Mastery 2026",
-                big_idea="Perfect webinars without the stress",
-                hook="The 3-step formula top creators use",
-                structure_points=["Hook", "Story", "Offer"],
+                title="The Hybrid-Expert Model",
+                big_idea="Markedet beveger seg bort fra rene informasjonskurs og mot implementeringsstøtte. Hybrid-modellen kombinerer det beste fra skalerbare nettkurs med resultatsikkerheten til 1-til-1 coaching. Ved å strukturere kunnskapen din modulært, men tilby skreddersydd støtte på de kritiske flaskehalsene, kan du levere bedre resultater til flere kunder på kortere tid. Dette er fremtiden for høyt betalte eksperter.",
+                hook="Slutt å bytte tid mot penger: Hvordan levere premium resultater på autopilot uten å miste den personlige kontakten.",
+                structure_points=["Det nye markedsbehovet", "Hvorfor gamle modeller feiler", "Hybrid-løsningen", "Skalerbarhetsparadokset", "Systematisert suksess"],
                 secrets=[
-                    {"assumption": "Selling is sleazy", "belief": "Selling is serving", "story": "The doctor analogy", "transformation": "Hiding to Helping"},
-                    {"assumption": "I need a big audience", "belief": "I need a ready audience", "story": "The 1000 true fans", "transformation": "Broad to Deep"},
-                    {"assumption": "Tech is the barrier", "belief": "Message is the barrier", "story": "The ugly funnel that converted", "transformation": "Confused to Clear"}
+                    {
+                        "assumption": "Personlig oppfølging skaleringens fiende.",
+                        "belief": "Strukturert personlig oppfølging er nøkkelen til premium prising.",
+                        "story": "Mange tror de må fjerne seg selv helt for å skalere. Jeg gjorde det motsatte. Jeg identifiserte de 3 stedene kundene mine alltid satt fast, og laget dedikerte støttesystemer kun der. Resten automatiserte jeg. Resultatet? Kundene følte seg mer sett enn noensinne, mens jeg jobbet 80% mindre. Det handler om kirurgisk presisjon i tidsbruken din.",
+                        "transformation": "Fra utbrent 'gjør-alt-selv' til strategisk veileder."
+                    }
                 ],
-                mechanism="The Engagement Loop",
-                value_anchor={"price": ["997"], "comparison": ["Hiring a copywriter"]},
-                bonus_ideas=["Slide Templates", "Email Scripts"],
-                cta_sentence="Start your masterclass now",
-                promises=["Convert at 10%", "Build authority"]
+                mechanism="Precision Support Architecture",
+                narrative_angle="The 'In-the-Trenches' Validated Discovery. You aren't teaching theory; you are sharing the exact operational blueprint requiring this shift.",
+                offer_transition_logic="Showcasing that the only gap between their current hustle and the hybrid freedom is the 'Architecture' (the offer).",
+                value_anchor={"price": ["25 000"], "comparison": ["Ansette ekstra ansatte", "År med prøving og feiling"]},
+                bonus_ideas=["Copy-paste malverk", "Salgsskript for high-ticket"],
+                cta_sentence="Søk om plass i Hybrid-akademiet.",
+                promises=["Frigjør 20+ timer i uken", "Øk kunde-LTV", "Bygg et salgbart system"]
             ),
             Concept(
-                title="High-Ticket Freedom",
-                big_idea="Selling premium services with zero sales calls",
-                hook="Stop chasing clients, let them come to you",
-                structure_points=["Attraction", "Nurture", "Conversion"],
+                title="Elite-Mindset Metoden",
+                big_idea="Strategi er verdiløst uten gjennomføringskraft. De fleste gründere vet *hva* de skal gjøre, men gjør det ikke. Hvorfor? Fordi deres interne 'termostat' er satt for lavt. Dette webinaret handler ikke om nye taktikker, men om å omprogrammere din underbevissthet for suksess. Vi dykker ned i nevrovitenskapen bak prestasjon og viser hvordan du kan knuse de usynlige glasstakene som holder deg tilbake.",
+                hook="Er din egen hjerne den største flaskehalsen i bedriften din? Avslør de ubevisste sabotørene som koster deg millioner.",
+                structure_points=["Det usynlige taket", "Identitetsskiftet", "Nevroplastisitet i praksis", "Den nye normalen", "Forpliktelsen"],
                 secrets=[
-                    {"assumption": "Cold calling works", "belief": "Inbound attraction works", "story": "The empty phone", "transformation": "Chasing to Attracting"},
-                    {"assumption": "Price is logic", "belief": "Price is emotion", "story": "The luxury brand", "transformation": "Commodity to Premium"},
-                    {"assumption": "I need credentials", "belief": "I need results", "story": "The dropout genius", "transformation": "Imposter to Authority"}
+                    {
+                        "assumption": "Jeg trenger mer kunnskap for å lykkes.",
+                        "belief": "Du trenger mindre støy og mer fokusert action.",
+                        "story": "Jeg samlet på kurs. Harddisken min var full av PDF-er jeg aldri leste. Jeg trodde neste kurs var 'the missing link'. Men da jeg stoppet opp og så på de som virkelig lyktes, så jeg et mønster: De kunne mindre enn meg, men de *gjorde* mer. Jeg sluttet å lære og begynte å avlære. Jeg fjernet støyen. Da kom resultatene.",
+                        "transformation": "Fra evig student til resultatskaper."
+                    }
                 ],
-                mechanism="The Authority Beacon",
-                value_anchor={"price": ["2500"], "comparison": ["A full sales team"]},
-                bonus_ideas=["Sales Scripts", "Objection Handling Guide"],
-                cta_sentence="Claim your freedom",
-                promises=["Zero cold calls", "High margin clients"]
+                mechanism="Neuro-Performance Reprogramming",
+                narrative_angle="The Hard Truth / Tough Love approach. Direct, honest, and cutting through the excuses to the root cause.",
+                offer_transition_logic="The content reveals the subconscious blocks; the offer provides the immersive environment and accountability needed to permanently break them.",
+                value_anchor={"price": ["15 000"], "comparison": ["Terapitimer", "Business-coaching uten effekt"]},
+                bonus_ideas=["Daglig morgen-priming lydfil", "Akutt stress-mastery verktøy"],
+                cta_sentence="Bli med i elite-programmet og ta kontroll over din skjebne.",
+                promises=["Knus prokrastinering", "Øk din finansielle termostat", "Bli en uovervinnelig leder"]
             )
         ]
+
 
     async def generate_content(self, prompt: str) -> str:
         """Call OpenAI API. Raises ValueError on 429/quota/API errors."""
@@ -174,6 +221,9 @@ class WebinarAIService:
         return await self._apply_mock_concepts_and_return(asset, reason)
 
     async def generate_concepts_chain(self, asset_id: str) -> dict:
+        print(f"DEBUG: generate_concepts_chain called for {asset_id}")
+        print(f"DEBUG: USE_MOCK_OPENAI = {USE_MOCK_OPENAI}")
+        
         asset = await WebinarAsset.get(asset_id)
         if not asset:
             raise ValueError("Asset not found")
@@ -259,6 +309,8 @@ class WebinarAIService:
                         structure_points=item.get("structure_points", []),
                         secrets=item.get("secrets", []),
                         mechanism=item.get("mechanism", ""),
+                        narrative_angle=item.get("narrative_angle", ""),
+                        offer_transition_logic=item.get("offer_transition_logic", ""),
                         value_anchor=item.get("value_anchor", {}),
                         bonus_ideas=item.get("bonus_ideas", []),
                         cta_sentence=item.get("cta_sentence", ""),
@@ -276,6 +328,8 @@ class WebinarAIService:
                 structure_points=[],
                 secrets=[],
                 mechanism="",
+                narrative_angle="",
+                offer_transition_logic="",
                 value_anchor={},
                 bonus_ideas=[],
                 cta_sentence="",
@@ -300,6 +354,12 @@ class WebinarAIService:
         asset = await WebinarAsset.get(asset_id)
         if not asset:
             raise ValueError("Asset not found")
+
+        if USE_MOCK_OPENAI:
+            mock_structure = "# Part 1: Intro\nSlide 1: Hook\nSlide 2: Big Idea\n# Part 2: Secrets\nSlide 3: Secret 1\n# Part 3: Offer\nSlide 80: The Pitch"
+            asset.structure_content = mock_structure
+            await asset.save()
+            return mock_structure
             
         # 1. Generate (English)
         prompt_1 = STRUCTURE_GENERATION_PROMPT.format(concept=concept_text)
@@ -322,22 +382,100 @@ class WebinarAIService:
         return improved_structure
 
     async def generate_email_plan(self, asset_id: str, structure_text: str, product_details: str) -> str:
-        # 1. Generate Plan
-        prompt_1 = EMAIL_PLAN_PROMPT.format(
-            concept_structure=structure_text,
-            product_details=product_details
+        from api.models import EmailPlan, EmailDraft
+        asset = await WebinarAsset.get(asset_id)
+        if not asset:
+            raise ValueError("Asset not found")
+
+        if USE_MOCK_OPENAI:
+            mock_drafts = [
+                EmailDraft(
+                    order=1, 
+                    day="Day 0",
+                    subject="Mock Pre-Webinar", 
+                    preview_text="Don't miss this...",
+                    body="Mock Body Paragraph 1\n\nMock Body Paragraph 2", 
+                    cta="Link: https://example.com/join",
+                    send_timing="1h before", 
+                    purpose="Reminder", 
+                    segment="pre_webinar"
+                ),
+                EmailDraft(
+                    order=2, 
+                    day="Day 1",
+                    subject="Mock Sales", 
+                    preview_text="Open for recording...",
+                    body="Mock Body Paragraph 1\n\nMock Body Paragraph 2", 
+                    cta="Link: https://example.com/buy",
+                    send_timing="1d after", 
+                    purpose="Pitch", 
+                    segment="sales"
+                )
+            ]
+            asset.email_plan = EmailPlan(timeline=[], emails=mock_drafts, strategy_notes="Mock Strategy")
+            asset.email_plan_content = "Mock Overall Strategy"
+            await asset.save()
+            return "Mock Overall Strategy"
+            
+        print(f"[WebinarAI] Starting Phase 3 (Emails) for asset {asset_id}")
+
+        # 1. Generate Strategy/Plan
+        prompt_1 = EMAIL_STRATEGY_PROMPT.format(
+            concept=asset.selected_concept.big_idea if asset.selected_concept else "",
+            structure=structure_text
         )
-        plan_text = await self.generate_content(prompt_1)
-        
-        # 2. Self-Evaluate Plan (Using a generic eval prompt or specific if available, here using Concept eval as template logic for now or raw eval)
-        # Note: We didn't add EMAIL_PLAN_EVALUATION_PROMPT explicitly, but we can reuse the logic or skip if not in brief. 
-        # Brief says "For each email...", but for the PLAN itself, it's good to checking.
-        # Let's stick to the Brief: "AI drafts the email -> AI self-evaluates the email". 
-        # But this function generates the PLAN. Detailed email generation is separate.
-        # I will return the plan as-is for now, but ensure the Email Generation Loop is ready for individual emails if needed.
-        # Actually, let's keep it simple for the Plan to avoid over-engineering if not requested. The prompt itself is very detailed.
-        
-        return plan_text
+        strategy_text = await self.generate_content(prompt_1)
+        asset.email_plan_content = strategy_text
+        print(f"[WebinarAI] Strategy generated")
+
+        # 2. Generate Drafts (English)
+        prompt_2 = EMAIL_GENERATION_PROMPT.format(strategy=strategy_text)
+        drafts_text = await self.generate_content(prompt_2)
+        print(f"[WebinarAI] Drafts generated")
+
+        # 3. Evaluate (English)
+        prompt_3 = EMAIL_EVALUATION_PROMPT.format(emails=drafts_text)
+        evaluation_text = await self.generate_content(prompt_3)
+        print(f"[WebinarAI] Evaluation complete")
+
+        # 4. Improve (English)
+        prompt_4 = EMAIL_IMPROVEMENT_PROMPT.format(
+            emails=drafts_text,
+            evaluation=evaluation_text
+        )
+        improved_text = await self.generate_content(prompt_4)
+        print(f"[WebinarAI] Improvement complete")
+
+        # Parse Final Emails
+        try:
+            import re
+            json_match = re.search(r'\[\s*\{.*\}\s*\]', improved_text, re.DOTALL)
+            if json_match:
+                improved_data = json.loads(json_match.group())
+                
+                email_drafts = []
+                for idx, item in enumerate(improved_data):
+                    email_drafts.append(EmailDraft(
+                        order=idx + 1,
+                        subject=item.get("subject", "No Subject"),
+                        preview_text=item.get("preview_text", ""), # or fallback
+                        body=item.get("body", ""),
+                        send_timing=item.get("timing", "TBD"),
+                        purpose=item.get("goal", ""), # or 'type'
+                        segment=item.get("type", "General")
+                    ))
+                
+                asset.email_plan = EmailPlan(
+                    timeline=[], # Optional
+                    emails=email_drafts,
+                    strategy_notes=strategy_text[:1000]
+                )
+                print(f"[WebinarAI] Parsed {len(email_drafts)} emails into plan")
+        except Exception as parse_err:
+            print(f"[WebinarAI] Error parsing improved emails: {parse_err}")
+
+        await asset.save()
+        return strategy_text
 
     async def generate_single_email_chain(self, email_outline: str, concept_context: str) -> dict:
         """
@@ -345,18 +483,18 @@ class WebinarAIService:
         This is the core "Machine Learning" loop for Email Production.
         """
         # 1. Draft
-        prompt_1 = EMAIL_GENERATION_PROMPT.format(email_outline=email_outline, concept_context=concept_context)
+        prompt_1 = EMAIL_GENERATION_PROMPT.format(strategy=email_outline)
         print("   -> Drafting Email...")
         draft_text = await self.generate_content(prompt_1)
         
         # 2. Evaluate
-        prompt_2 = EMAIL_SELF_EVALUATION_PROMPT.format(email_text=draft_text)
+        prompt_2 = EMAIL_EVALUATION_PROMPT.format(emails=draft_text)
         print("   -> Self-Evaluating Email...")
         evaluation_text = await self.generate_content(prompt_2)
         
         # 3. Improve
-        prompt_3 = EMAIL_EVALUATION_IMPLEMENTATION_PROMPT.format(
-            email_text=draft_text,
+        prompt_3 = EMAIL_IMPROVEMENT_PROMPT.format(
+            emails=draft_text,
             evaluation=evaluation_text
         )
         print("   -> Improving Email...")

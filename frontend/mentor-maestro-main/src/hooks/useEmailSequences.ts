@@ -45,14 +45,14 @@ export function useEmailSequences() {
 
         // Simple keyword mapping strategy
         asset.email_plan.emails.forEach((email: any, index: number) => {
-          const purpose = email.purpose.toLowerCase();
-          const segment = email.segment.toLowerCase();
+          const purpose = (email.purpose || "").toLowerCase();
+          const segment = (email.segment || "").toLowerCase();
 
-          if (segment.includes("registered") || purpose.includes("reminder")) {
+          if (segment.includes("pre_webinar") || segment.includes("registered") || purpose.includes("reminder")) {
             groupedEmails.pre_webinar.push({ ...email, order: index + 1 });
-          } else if (segment.includes("attended") || purpose.includes("thank")) {
+          } else if (segment.includes("post_webinar") || segment.includes("attended") || purpose.includes("thank")) {
             groupedEmails.post_webinar.push({ ...email, order: index + 1 });
-          } else if (purpose.includes("replay")) {
+          } else if (segment.includes("replay") || purpose.includes("replay")) {
             groupedEmails.replay.push({ ...email, order: index + 1 });
           } else {
             groupedEmails.sales.push({ ...email, order: index + 1 });
