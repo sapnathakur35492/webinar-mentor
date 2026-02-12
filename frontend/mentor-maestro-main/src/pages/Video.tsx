@@ -6,7 +6,7 @@ import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
-import { Video, RefreshCw, PlayCircle, FileText, CheckCircle2, Lock, ArrowRight } from "lucide-react";
+import { Video, RefreshCw, PlayCircle, FileText, CheckCircle2, Lock, ArrowRight, Headphones, Volume2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -18,7 +18,9 @@ export default function VideoPage() {
     const [script, setScript] = useState("");
     const [videoResult, setVideoResult] = useState<any>(null);
     const [isPolling, setIsPolling] = useState(false);
+    const [isPreviewing, setIsPreviewing] = useState(false);
     const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const audioRef = useRef<HTMLAudioElement | null>(null);
 
     // Get approved concept
     const finalConcept = concepts.find(c => c.is_final) || concepts.find(c => c.status === "approved");
@@ -47,6 +49,10 @@ export default function VideoPage() {
     useEffect(() => {
         return () => {
             if (pollingRef.current) clearInterval(pollingRef.current);
+            if (audioRef.current) {
+                audioRef.current.pause();
+                audioRef.current = null;
+            }
         };
     }, []);
 
@@ -82,6 +88,45 @@ export default function VideoPage() {
             const msg = e?.response?.data?.detail || e?.message || "Video generation failed";
             toast.error(msg, { id: toastId });
             setIsGenerating(false);
+        }
+    };
+
+    const handleInstantPreview = async () => {
+        if (!script.trim()) {
+            toast.error("Please enter a script first");
+            return;
+        }
+
+        setIsPreviewing(true);
+        const toastId = toast.loading("Generating instant preview...");
+
+        try {
+            const audioBlob = await api.generateInstantAudio(script.slice(0, 1000));
+            const audioUrl = URL.createObjectURL(audioBlob);
+
+            if (audioRef.current) {
+                audioRef.current.pause();
+            }
+
+            const audio = new Audio(audioUrl);
+            audioRef.current = audio;
+
+            audio.onended = () => {
+                setIsPreviewing(false);
+                URL.revokeObjectURL(audioUrl);
+            };
+
+            audio.onerror = () => {
+                setIsPreviewing(false);
+                toast.error("Failed to play preview audio");
+            };
+
+            await audio.play();
+            toast.success("Playing preview. No video has been created on HeyGen yet.", { id: toastId, duration: 4000 });
+        } catch (e: any) {
+            console.error("[Video] Preview error:", e);
+            toast.error("Preview failed. Please try again.", { id: toastId });
+            setIsPreviewing(false);
         }
     };
 
@@ -167,10 +212,28 @@ export default function VideoPage() {
                                 className="min-h-[400px] font-mono text-sm leading-relaxed"
                                 placeholder="Enter your video script here..."
                             />
-                            <div className="flex justify-end">
+                            <div className="flex gap-3 justify-end">
+                                <Button
+                                    variant="outline"
+                                    onClick={handleInstantPreview}
+                                    disabled={isGenerating || isPolling || isPreviewing || !script.trim()}
+                                    className="gap-2 border-primary/20 hover:bg-primary/5 text-primary"
+                                >
+                                    {isPreviewing ? (
+                                        <>
+                                            <Volume2 className="h-4 w-4 animate-bounce" />
+                                            Playing...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Headphones className="h-4 w-4" />
+                                            Instant Preview (No-Dash)
+                                        </>
+                                    )}
+                                </Button>
                                 <Button
                                     onClick={handleGenerateVideo}
-                                    disabled={isGenerating || isPolling || !script.trim()}
+                                    disabled={isGenerating || isPolling || isPreviewing || !script.trim()}
                                     className="bg-primary hover:bg-primary/90 text-white gap-2"
                                 >
                                     {isGenerating ? (
@@ -186,7 +249,7 @@ export default function VideoPage() {
                                     ) : (
                                         <>
                                             <Video className="h-4 w-4" />
-                                            Generate AI Video
+                                            Create Final AI Video
                                         </>
                                     )}
                                 </Button>

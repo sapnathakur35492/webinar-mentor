@@ -115,6 +115,16 @@ export const api = {
     return response.data;
   },
 
+  // 6.5 Generate Instant Audio (Preview)
+  generateInstantAudio: async (text: string, voice?: string, speed = 1.0) => {
+    const response = await axios.post(`${API_Base}/video/instant-audio`, {
+      text,
+      voice,
+      speed
+    }, { responseType: 'blob' });
+    return response.data;
+  },
+
   // 7. Get Asset Status
   getAsset: async (assetId: string) => {
     const response = await axios.get(`${API_Base}/assets/${assetId}`);
