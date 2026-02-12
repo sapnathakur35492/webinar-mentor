@@ -1,12 +1,12 @@
 import { MainLayout } from "@/components/layout/MainLayout";
 import { useWebinarConcepts } from "@/hooks/useWebinarConcepts";
-import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
-import { Video, Sparkles, RefreshCw, PlayCircle, FileText, CheckCircle2, Lock, ArrowRight } from "lucide-react";
+import { Video, RefreshCw, PlayCircle, FileText, CheckCircle2, Lock, ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -17,7 +17,8 @@ export default function VideoPage() {
     const [isGenerating, setIsGenerating] = useState(false);
     const [script, setScript] = useState("");
     const [videoResult, setVideoResult] = useState<any>(null);
-    const [isLoadingVideo, setIsLoadingVideo] = useState(false);
+    const [isPolling, setIsPolling] = useState(false);
+    const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     // Get approved concept
     const finalConcept = concepts.find(c => c.is_final) || concepts.find(c => c.status === "approved");
@@ -27,23 +28,27 @@ export default function VideoPage() {
     useEffect(() => {
         if (finalConcept?.secret_structure && !script) {
             try {
-                // Try parsing JSON structure first
                 const structure = JSON.parse(finalConcept.secret_structure);
                 if (typeof structure === 'string') {
                     setScript(structure);
                 } else if (Array.isArray(structure)) {
-                    // Map backend keys (assumption/belief/story) to script text
                     const scriptText = structure
                         .map((s: any) => `Assumption: ${s.assumption}\nNew Belief: ${s.belief}\nStory: ${s.story}`)
                         .join("\n\n");
                     setScript(scriptText);
                 }
             } catch (e) {
-                // Fallback: use raw text if not valid JSON
                 setScript(finalConcept.secret_structure);
             }
         }
     }, [finalConcept, script]);
+
+    // Cleanup polling on unmount
+    useEffect(() => {
+        return () => {
+            if (pollingRef.current) clearInterval(pollingRef.current);
+        };
+    }, []);
 
     const handleGenerateVideo = async () => {
         if (!script.trim()) {
@@ -54,50 +59,58 @@ export default function VideoPage() {
         setIsGenerating(true);
         setVideoResult(null);
 
+        const toastId = toast.loading("Connecting to HeyGen...");
         try {
-            // 1. Generate Video (Trigger D-ID)
-            console.log("Generating video for script:", script.substring(0, 50) + "...");
-            const response = await api.generateVideo(assetId || undefined, script); // Calls POST /video/generate
+            // Call our backend which forwards to HeyGen
+            const response = await api.generateVideo(assetId || undefined, script.slice(0, 900));
 
-            if (response.status === "success" && response.data) {
-                toast.success("Video generation started! This may take a few moments.");
-                setVideoResult(response.data);
+            if (response.status === "success" && response.talk_id) {
+                const videoId = response.talk_id;
+                toast.success("Video generation started! This may take 1-3 minutes.", { id: toastId, duration: 3000 });
 
-                // Start polling if we have an ID
-                if (response.data.id) {
-                    pollVideoStatus(response.data.id);
-                }
+                // Set initial result to show "processing" state
+                setVideoResult({ id: videoId, status: "processing", provider: "heygen" });
+                setIsGenerating(false);
+
+                // Start polling for video status
+                pollVideoStatus(videoId);
             } else {
-                throw new Error("Failed to start video generation");
+                throw new Error(response.detail || "Failed to start video generation");
             }
-
-        } catch (error: any) {
-            console.error("Video generation error:", error);
-            toast.error(error.message || "Failed to generate video");
-        } finally {
+        } catch (e: any) {
+            console.error("[Video] Generation error:", e);
+            const msg = e?.response?.data?.detail || e?.message || "Video generation failed";
+            toast.error(msg, { id: toastId });
             setIsGenerating(false);
         }
     };
 
-    const pollVideoStatus = async (talkId: string) => {
-        setIsLoadingVideo(true);
-        const interval = setInterval(async () => {
+    const pollVideoStatus = (videoId: string) => {
+        setIsPolling(true);
+
+        pollingRef.current = setInterval(async () => {
             try {
-                const statusData = await api.getVideoStatus(talkId);
-                // Check status in statusData
-                if (statusData && (statusData.status === "done" || statusData.status === "error")) {
-                    clearInterval(interval);
-                    setIsLoadingVideo(false);
+                const statusData = await api.getVideoStatus(videoId);
+
+                if (statusData?.status === "done" && statusData?.result_url) {
+                    // Video is ready!
+                    if (pollingRef.current) clearInterval(pollingRef.current);
+                    setIsPolling(false);
                     setVideoResult(statusData);
-                    if (statusData.status === "done") toast.success("Video generated successfully!");
-                    else toast.error("Video generation failed.");
+                    toast.success("Your AI video is ready! 🎉", { duration: 5000 });
+                } else if (statusData?.status === "error") {
+                    // Generation failed
+                    if (pollingRef.current) clearInterval(pollingRef.current);
+                    setIsPolling(false);
+                    setVideoResult(statusData);
+                    toast.error("Video generation failed. Please try again.");
                 }
+                // If still "processing", keep polling
             } catch (e) {
-                console.error("Polling error", e);
-                clearInterval(interval);
-                setIsLoadingVideo(false);
+                console.error("[Video] Polling error:", e);
+                // Don't stop polling on transient network errors
             }
-        }, 5000);
+        }, 3000); // Poll every 3 seconds
     };
 
     if (!finalConcept) {
@@ -157,18 +170,23 @@ export default function VideoPage() {
                             <div className="flex justify-end">
                                 <Button
                                     onClick={handleGenerateVideo}
-                                    disabled={isGenerating || !script.trim()}
+                                    disabled={isGenerating || isPolling || !script.trim()}
                                     className="bg-primary hover:bg-primary/90 text-white gap-2"
                                 >
                                     {isGenerating ? (
                                         <>
                                             <RefreshCw className="h-4 w-4 animate-spin" />
-                                            Generating...
+                                            Sending to HeyGen...
+                                        </>
+                                    ) : isPolling ? (
+                                        <>
+                                            <RefreshCw className="h-4 w-4 animate-spin" />
+                                            Generating Video...
                                         </>
                                     ) : (
                                         <>
                                             <Video className="h-4 w-4" />
-                                            Generate Video
+                                            Generate AI Video
                                         </>
                                     )}
                                 </Button>
@@ -189,45 +207,50 @@ export default function VideoPage() {
                         </CardHeader>
                         <CardContent className="flex items-center justify-center min-h-[400px]">
                             {videoResult ? (
-                                <div className="text-center space-y-4">
-                                    <div className="bg-background rounded-lg p-6 border border-border shadow-sm">
-                                        <CheckCircle2 className="h-12 w-12 text-success mx-auto mb-3" />
-                                        <h3 className="font-semibold text-lg">
-                                            {videoResult.status === "done" ? "Video Ready!" : "Generation Started"}
-                                        </h3>
-
-                                        {/* SIMULATION ALERT - HIDDEN FROM FRONTEND AS PER USER REQUEST */}
-                                        {videoResult.id && videoResult.id.includes("MOCK_ERROR") && (
-                                            <div className="hidden" />
-                                        )}
-                                        {videoResult.id && !videoResult.id.includes("MOCK") && (
-                                            <div className="flex items-center justify-center gap-2 text-emerald-600 text-xs font-semibold animate-pulse mb-2">
-                                                <RefreshCw className="h-3 w-3 animate-spin" />
-                                                Live AI Generation Active
+                                <div className="text-center space-y-4 w-full">
+                                    <div className={cn("bg-background rounded-lg border border-border shadow-sm", videoResult.status === "done" ? "p-1" : "p-6")}>
+                                        {/* Processing State */}
+                                        {videoResult.status === "processing" && (
+                                            <div className="flex flex-col items-center justify-center space-y-8 py-12">
+                                                <RefreshCw className="h-20 w-20 text-primary animate-spin" />
+                                                <div className="space-y-3">
+                                                    <h3 className="font-bold text-2xl">Generating Your AI Video...</h3>
+                                                    <p className="text-muted-foreground animate-pulse text-lg">
+                                                        HeyGen is creating your video with Dora. This usually takes 1-3 minutes.
+                                                    </p>
+                                                </div>
+                                                <div className="w-full max-w-md bg-muted rounded-full h-3 overflow-hidden shadow-inner">
+                                                    <div className="bg-primary h-full rounded-full animate-pulse transition-all duration-1000" style={{ width: "65%" }} />
+                                                </div>
                                             </div>
                                         )}
 
-                                        {videoResult.status !== "done" && !String(videoResult.id).includes("MOCK") && (
-                                            <>
-                                                <p className="text-sm text-muted-foreground mb-2">ID: {videoResult.id}</p>
-                                                <p className="text-sm text-muted-foreground animate-pulse">
-                                                    Processing video... ({videoResult.status || "started"})
+                                        {/* Error State */}
+                                        {videoResult.status === "error" && (
+                                            <div className="space-y-3">
+                                                <div className="h-12 w-12 bg-red-100 rounded-full flex items-center justify-center mx-auto">
+                                                    <span className="text-red-500 text-xl">✕</span>
+                                                </div>
+                                                <h3 className="font-semibold text-lg">Generation Failed</h3>
+                                                <p className="text-sm text-muted-foreground">
+                                                    Please try again. If the issue persists, check your HeyGen credits.
                                                 </p>
-                                            </>
-                                        )}
-                                        {videoResult.status !== "done" && String(videoResult.id).includes("MOCK") && (
-                                            <p className="text-sm text-muted-foreground animate-pulse">
-                                                Finalizing your AI video...
-                                            </p>
+                                                <Button onClick={handleGenerateVideo} variant="outline" className="gap-2">
+                                                    <RefreshCw className="h-4 w-4" /> Retry
+                                                </Button>
+                                            </div>
                                         )}
 
+
+                                        {/* Video Player */}
                                         {(videoResult.result_url || videoResult.items?.[0]?.video_url) && (
                                             <video
                                                 src={videoResult.result_url || videoResult.items?.[0]?.video_url}
                                                 controls
-                                                autoPlay
-                                                muted
-                                                className="mt-4 rounded-lg w-full shadow-lg border border-border object-contain max-h-[500px] bg-black"
+                                                autoPlay={false}
+                                                muted={false}
+                                                playsInline
+                                                className="rounded-lg w-full shadow-lg border border-border object-contain max-h-[800px] bg-black"
                                             />
                                         )}
                                     </div>

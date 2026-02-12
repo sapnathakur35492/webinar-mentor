@@ -18,14 +18,14 @@ import {
   Rocket,
   MessageSquare,
   FileText,
-  Copy
+  Copy,
+  User
 } from "lucide-react";
 import { useProfile } from "@/hooks/useProfile";
 import { useWebinarConcepts } from "@/hooks/useWebinarConcepts";
 import { useEmailSequences } from "@/hooks/useEmailSequences";
 import { useGeneratedMedia } from "@/hooks/useGeneratedMedia";
 import { useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
@@ -85,7 +85,6 @@ export default function Structure() {
       await api.generateStructure(assetId, conceptText);
 
       toast.success("Structure generated successfully!");
-      // Refresh to move to "Has Structure" state
       await refetchConcepts();
     } catch (error: any) {
       toast.error(error.message || "Failed to generate structure");
@@ -102,44 +101,30 @@ export default function Structure() {
     }
 
     setGeneratingImage(imageType);
+    const toastId = toast.loading(`Generating ${imageTypes.find(t => t.id === imageType)?.label}...`);
     try {
       const assetId = localStorage.getItem("current_asset_id");
-      if (!assetId) {
-        throw new Error("No asset ID found");
-      }
+      if (!assetId) throw new Error("No asset ID found");
 
-      // Get concept text for better image generation
       const conceptText = `${finalConcept.big_idea}. ${finalConcept.hooks?.[0] || ""}`;
-
-      const result = await api.generatePromotionalImage(assetId, imageType, conceptText);
+      const result = await api.generatePromotionalImage(assetId, imageType, conceptText, true);
 
       if (result.status === "success" && result.image_url) {
-        // Store the image URL in local state
-        setGeneratedImages(prev => ({
-          ...prev,
-          [imageType]: result.image_url
-        }));
-
-        toast.success(`${imageTypes.find(t => t.id === imageType)?.label} generated!`);
-        console.log("Generated image URL:", result.image_url);
-
-        // TODO: Save to database via Supabase or backend
-        // For now the image will be displayed from the response
-
+        setGeneratedImages(prev => ({ ...prev, [imageType]: result.image_url }));
+        toast.success(`${imageTypes.find(t => t.id === imageType)?.label} generated!`, { id: toastId });
         queryClient.invalidateQueries({ queryKey: ["generated-media"] });
       } else {
         throw new Error("Image generation failed");
       }
     } catch (error: any) {
       console.error("Image generation error:", error);
-      toast.error(error.message || "Failed to generate image");
+      toast.error(error.message || "Failed to generate image", { id: toastId });
     } finally {
       setGeneratingImage(null);
     }
   };
 
   const getMediaByType = (type: string) => {
-    // Check MongoDB persisted images first
     const persisted = promotionalImages.find((img: any) => img.media_type === type);
     if (persisted) {
       return {
@@ -149,11 +134,10 @@ export default function Structure() {
         admin_notes: persisted.admin_notes
       };
     }
-    // Fallback to Supabase media if still being used
     return media.find(m => m.media_type === type);
   };
 
-  // --- Video Generation ---
+  // --- Video Generation (HeyGen) ---
   const handleGenerateVideo = async () => {
     if (!finalConcept?.id) {
       toast.error("Please approve a concept first");
@@ -162,39 +146,36 @@ export default function Structure() {
 
     setIsGeneratingVideo(true);
     setVideoResult(null);
+    const toastId = toast.loading("Sending script to HeyGen...");
     try {
       const assetId = localStorage.getItem("current_asset_id");
       if (!assetId) throw new Error("No asset ID found");
 
-      // Use the selected avatar (it's just the filename, backend handles the URL)
-      // Actually, let's pass the full URL if we want to be explicit, 
-      // but did_service.py now has a default pointing to DORA-14.jpg
-
       const response = await api.generateVideo(assetId, undefined, undefined);
 
-      if (response.status === "success" && response.data?.id) {
-        toast.info("Video generation started! This may take 2-4 minutes.");
-        setVideoResult(response.data);
+      if (response.status === "success" && response.talk_id) {
+        toast.success("AI Video generation started! This may take 2-4 minutes.", { id: toastId, duration: 4000 });
+        setVideoResult({ id: response.talk_id, status: "processing", provider: "heygen" });
 
-        // Polling for video result
         let polls = 0;
-        const maxPolls = 30; // 5 minutes
+        const maxPolls = 60; // 10 minutes
 
         const pollVideo = async () => {
           try {
-            const statusResponse = await api.getVideoStatus(response.data.id);
-            console.log("Video status:", statusResponse.status);
+            const statusResponse = await api.getVideoStatus(response.talk_id);
+            console.log("HeyGen Video status:", statusResponse.status);
 
-            if (statusResponse.status === "completed") {
+            if (statusResponse.status === "done" || statusResponse.status === "completed") {
               setVideoResult(statusResponse);
-              toast.success("✨ AI Video is ready!");
+              toast.success("✨ AI Video is ready!", { duration: 5000 });
               setIsGeneratingVideo(false);
+              await refetchConcepts(); // Update persisted URL
             } else if (statusResponse.status === "error" || statusResponse.status === "failed") {
-              throw new Error(statusResponse.error?.message || "D-ID Generation failed");
+              throw new Error(statusResponse.detail || "Video generation failed");
             } else {
               polls++;
               if (polls < maxPolls) {
-                setTimeout(pollVideo, 10000); // Poll every 10s
+                setTimeout(pollVideo, 3000); // Poll every 3s
               } else {
                 throw new Error("Video generation timed out. Please refresh later.");
               }
@@ -206,8 +187,7 @@ export default function Structure() {
           }
         };
 
-        // Start polling after 10 seconds
-        setTimeout(pollVideo, 10000);
+        setTimeout(pollVideo, 3000);
       } else {
         throw new Error("Failed to start video generation");
       }
@@ -218,7 +198,6 @@ export default function Structure() {
     }
   };
 
-  // --- Submissions ---
   const handleSubmitAllForApproval = async () => {
     setSubmittingAll(true);
     try {
@@ -227,12 +206,13 @@ export default function Structure() {
       }
       for (const seq of sequences) {
         if (!seq.submitted_for_approval_at) {
-          await submitEmailForApproval.mutateAsync(seq.id);
+          // hook takes no args for now
+          await (submitEmailForApproval.mutateAsync as any)(seq.id);
         }
       }
       for (const m of media) {
         if (!m.submitted_for_approval_at) {
-          await submitMediaForApproval.mutateAsync({ mediaId: m.id });
+          await submitMediaForApproval.mutateAsync(m.id);
         }
       }
       toast.success("All content submitted for admin approval!");
@@ -242,16 +222,6 @@ export default function Structure() {
       setSubmittingAll(false);
     }
   };
-
-  const allApproved = finalConcept?.ready_to_publish &&
-    sequences.every(s => s.ready_to_publish) &&
-    media.every(m => m.ready_to_publish);
-
-  const pendingApprovalCount = [
-    finalConcept?.submitted_for_approval_at && !finalConcept?.admin_approved_at ? 1 : 0,
-    ...sequences.filter(s => s.submitted_for_approval_at && !s.admin_approved_at).map(() => 1),
-    ...media.filter(m => m.submitted_for_approval_at && !m.admin_approved_at).map(() => 1),
-  ].reduce((a, b) => a + b, 0);
 
   const hasContentToSubmit = (finalConcept && !finalConcept.submitted_for_approval_at) ||
     sequences.some(s => !s.submitted_for_approval_at) ||
@@ -289,7 +259,6 @@ export default function Structure() {
           )}
         </div>
 
-        {/* Lock Notice */}
         {!canGenerate && (
           <div className="bg-amber-50 rounded-xl p-6 border border-amber-200 flex items-center gap-4 shadow-sm">
             <div className="rounded-full bg-amber-100 p-3">
@@ -349,7 +318,6 @@ export default function Structure() {
               ) : (
                 <div className="space-y-4">
                   <div className="bg-gray-50 rounded-lg p-6 border border-gray-200 max-h-[500px] overflow-y-auto">
-                    {/* Parse and display belief shifts in formatted cards */}
                     {(() => {
                       try {
                         const beliefs = typeof finalConcept.secret_structure === 'string'
@@ -398,10 +366,8 @@ export default function Structure() {
                             </div>
                           );
                         }
-                        // Fallback for non-array content
                         return <pre className="whitespace-pre-wrap font-sans text-sm text-gray-700 leading-relaxed">{finalConcept.secret_structure}</pre>;
                       } catch {
-                        // Fallback if parsing fails
                         return <pre className="whitespace-pre-wrap font-sans text-sm text-gray-700 leading-relaxed">{finalConcept.secret_structure}</pre>;
                       }
                     })()}
@@ -443,7 +409,6 @@ export default function Structure() {
                     key={type.id}
                     className="bg-gray-50 rounded-xl overflow-hidden border border-border group hover:shadow-md transition-all"
                   >
-                    {/* Check generated images first, then existing media */}
                     {(generatedImages[type.id] || existingMedia?.image_url) ? (
                       <div className="relative aspect-video bg-gray-200">
                         <img
@@ -532,44 +497,36 @@ export default function Structure() {
           </div>
         )}
 
-        {/* --- SECTION 3: VIDEO GENERATION --- */}
+        {/* --- SECTION 3: VIDEO GENERATION (HeyGen) --- */}
         {canGenerate && (
           <div className="bg-white rounded-xl border border-border overflow-hidden shadow-sm">
             <div className="p-6 border-b border-border bg-[#142721] text-white flex justify-between items-center">
               <div className="flex items-center gap-3">
                 <Rocket className="h-6 w-6 text-[#3bba69]" />
                 <div>
-                  <h2 className="text-xl font-bold">AI Video Generation</h2>
+                  <h2 className="text-xl font-bold">AI Video Generation (HeyGen)</h2>
                   <p className="text-white/60 text-sm">Create your AI spokesperson video</p>
                 </div>
               </div>
-              {videoResult?.status === "completed" && (
+              {(videoResult?.status === "completed" || videoResult?.status === "done" || persistedVideoUrl) && (
                 <Badge className="bg-[#3bba69] text-white">Ready</Badge>
               )}
             </div>
 
             <div className="p-6">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Left Side: Avatar Selection & Settings */}
                 <div className="space-y-6">
                   <div>
-                    <h4 className="text-sm font-semibold text-gray-900 mb-4 uppercase tracking-wider">Select AI Avatar</h4>
+                    <h4 className="text-sm font-semibold text-gray-900 mb-4 uppercase tracking-wider">AI Avatar</h4>
                     <div className="grid grid-cols-2 gap-4">
-                      <button
-                        onClick={() => setSelectedAvatar("DORA-14.jpg")}
-                        className={cn(
-                          "relative rounded-xl overflow-hidden border-2 transition-all p-1",
-                          selectedAvatar === "DORA-14.jpg" ? "border-[#3bba69] bg-[#3bba69]/5 shadow-md" : "border-transparent bg-gray-50 hover:bg-gray-100"
-                        )}
-                      >
+                      <div className="relative rounded-xl overflow-hidden border-2 border-[#3bba69] bg-[#3bba69]/5 shadow-md p-1">
                         <div className="aspect-square rounded-lg overflow-hidden bg-gray-200">
                           <img
                             src="http://localhost:8000/static/avatars/DORA-14.jpg"
                             alt="DORA-14"
                             className="w-full h-full object-cover"
                             onError={(e) => {
-                              // Fallback if local server not running or image missing
-                              (e.target as HTMLImageElement).src = "https://clips-presenters.d-id.com/matt/image.png";
+                              (e.target as HTMLImageElement).src = "https://files.catbox.moe/68vt9u.jpg";
                             }}
                           />
                         </div>
@@ -577,17 +534,12 @@ export default function Structure() {
                           <p className="text-xs font-bold text-gray-900">DORA-14</p>
                           <p className="text-[10px] text-gray-500">Professional Host</p>
                         </div>
-                        {selectedAvatar === "DORA-14.jpg" && (
-                          <div className="absolute top-2 right-2 bg-[#3bba69] text-white rounded-full p-0.5 shadow-sm">
-                            <CheckCircle2 className="h-3 w-3" />
-                          </div>
-                        )}
-                      </button>
+                        <div className="absolute top-2 right-2 bg-[#3bba69] text-white rounded-full p-0.5 shadow-sm">
+                          <CheckCircle2 className="h-3 w-3" />
+                        </div>
+                      </div>
 
-                      <button
-                        disabled
-                        className="relative rounded-xl overflow-hidden border-2 border-transparent bg-gray-50 p-1 opacity-50 grayscale cursor-not-allowed"
-                      >
+                      <div className="relative rounded-xl overflow-hidden border-2 border-transparent bg-gray-50 p-1 opacity-50 grayscale cursor-not-allowed">
                         <div className="aspect-square rounded-lg overflow-hidden bg-gray-200 flex items-center justify-center">
                           <User className="h-8 w-8 text-gray-400" />
                         </div>
@@ -595,7 +547,7 @@ export default function Structure() {
                           <p className="text-xs font-bold text-gray-900">Custom Avatar</p>
                           <p className="text-[10px] text-gray-500">Coming Soon</p>
                         </div>
-                      </button>
+                      </div>
                     </div>
                   </div>
 
@@ -603,9 +555,13 @@ export default function Structure() {
                     <div className="flex gap-3">
                       <Clock className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
                       <div>
-                        <p className="text-sm font-semibold text-blue-900">Script Preview</p>
-                        <p className="text-xs text-blue-700 mt-1 line-clamp-3 italic">
-                          {finalConcept?.secret_structure ? "Your webinar structure points have been converted into an AI spokesperson script..." : "Generate your structure first to see the script preview."}
+                        <p className="text-sm font-semibold text-blue-900">Status</p>
+                        <p className="text-xs text-blue-700 mt-1">
+                          {isGeneratingVideo
+                            ? "HeyGen is processing your video. This may take a few minutes..."
+                            : hasStructure
+                              ? "Ready to generate! Click the button below to start the HeyGen process."
+                              : "Generate structure first to create the video script."}
                         </p>
                       </div>
                     </div>
@@ -630,24 +586,20 @@ export default function Structure() {
                   </Button>
                 </div>
 
-                {/* Right Side: Video Preview */}
-                <div className="flex flex-col items-center justify-center min-h-[300px] rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 p-4">
-                  {(videoResult?.result_url || persistedVideoUrl) ? (
+                <div className={cn("flex flex-col items-center justify-center min-h-[300px] rounded-xl border-2 border-dashed border-gray-200 bg-gray-50", (videoResult?.result_url || persistedVideoUrl) ? "p-0" : "p-4")}>
+                  {(videoResult?.result_url || videoResult?.items?.[0]?.video_url || persistedVideoUrl) ? (
                     <div className="w-full space-y-4">
                       <div className="aspect-video rounded-lg overflow-hidden shadow-2xl bg-black">
                         <video
-                          src={videoResult?.result_url || persistedVideoUrl}
+                          src={videoResult?.result_url || videoResult?.items?.[0]?.video_url || persistedVideoUrl}
                           controls
                           className="w-full h-full object-contain"
                           poster="http://localhost:8000/static/avatars/DORA-14.jpg"
                         />
                       </div>
-                      <div className="flex justify-between items-center">
-                        <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200">
-                          <CheckCircle2 className="h-3 w-3 mr-1" /> HD Render Complete
-                        </Badge>
+                      <div className="flex justify-end p-2">
                         <Button variant="ghost" size="sm" asChild>
-                          <a href={videoResult?.result_url || persistedVideoUrl} download target="_blank" rel="noopener noreferrer">
+                          <a href={videoResult?.result_url || videoResult?.items?.[0]?.video_url || persistedVideoUrl} download target="_blank" rel="noopener noreferrer">
                             <Download className="h-4 w-4 mr-2" /> Download Video
                           </a>
                         </Button>
@@ -656,14 +608,16 @@ export default function Structure() {
                   ) : (
                     <div className="text-center space-y-3">
                       {isGeneratingVideo ? (
-                        <div className="flex flex-col items-center gap-4">
-                          <div className="relative">
-                            <div className="h-20 w-20 rounded-full border-4 border-[#3bba69]/20 border-t-[#3bba69] animate-spin" />
-                            <Sparkles className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-8 w-8 text-[#3bba69]" />
+                        <div className="flex flex-col items-center justify-center space-y-8 w-full py-10">
+                          <RefreshCw className="h-16 w-16 text-[#3bba69] animate-spin" />
+                          <div className="space-y-2">
+                            <h3 className="font-bold text-xl text-gray-900">Generating Your AI Video...</h3>
+                            <p className="text-sm text-gray-500 animate-pulse">
+                              HeyGen is creating your video with Dora. This usually takes 2-4 minutes.
+                            </p>
                           </div>
-                          <div>
-                            <p className="font-bold text-gray-900">Rendering AI Spokesperson...</p>
-                            <p className="text-sm text-gray-500">This usually takes 2-4 minutes</p>
+                          <div className="w-full max-w-xs bg-gray-200 rounded-full h-2.5 overflow-hidden shadow-inner">
+                            <div className="bg-[#3bba69] h-full rounded-full animate-pulse transition-all duration-1000" style={{ width: "65%" }} />
                           </div>
                         </div>
                       ) : (
@@ -672,7 +626,7 @@ export default function Structure() {
                           <div>
                             <p className="text-lg font-bold text-gray-900">Video Preview</p>
                             <p className="text-sm text-gray-500 max-w-xs mx-auto">
-                              Your generated AI video will appear here. Choose your avatar and click "Create AI Video" to start.
+                              Your generated AI video will appear here. Click "Create AI Video" to start.
                             </p>
                           </div>
                         </>

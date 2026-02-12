@@ -136,11 +136,12 @@ export const api = {
   },
 
   // 10. Generate Promotional Image
-  generatePromotionalImage: async (conceptId: string, mediaType: string, conceptText?: string) => {
+  generatePromotionalImage: async (conceptId: string, mediaType: string, conceptText?: string, fastMode = true) => {
     const response = await axios.post(`${API_Base}/images/generate`, {
       concept_id: conceptId,
       media_type: mediaType,
-      concept_text: conceptText
+      concept_text: conceptText,
+      fast_mode: fastMode
     });
     return response.data;
   },

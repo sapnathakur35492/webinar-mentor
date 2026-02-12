@@ -2,9 +2,12 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
   Lightbulb,
+  Presentation,
+  Video,
   CheckSquare,
   Mail,
   ClipboardList,
+  Settings,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 
@@ -12,8 +15,11 @@ const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
   { name: "Setup", href: "/setup", icon: ClipboardList },
   { name: "Webinar Concepts", href: "/concepts", icon: Lightbulb },
+  { name: "Structure", href: "/structure", icon: Presentation },
   { name: "Email Sequences", href: "/emails", icon: Mail },
+  { name: "Video", href: "/video", icon: Video },
   { name: "Approvals", href: "/approvals", icon: CheckSquare },
+  { name: "Settings", href: "/settings", icon: Settings },
 ];
 
 export function Sidebar() {

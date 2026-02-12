@@ -82,16 +82,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         password
       });
 
-      const { access_token } = response.data;
+      const { access_token, user_id, full_name } = response.data;
       localStorage.setItem("token", access_token);
 
-      // We need to set the User state. 
-      // Since login only returns token, we should probably construct a basic user object 
-      // or fetch "me" endpoint. For now, let's construct from email.
-      // Ideally we should decode JWT.
-      const fakeUser = { id: "jwt-user", email: email };
-      localStorage.setItem("user_data", JSON.stringify(fakeUser));
-      setUser(fakeUser);
+      const loggedInUser = { id: user_id || "jwt-user", email, full_name };
+      localStorage.setItem("user_data", JSON.stringify(loggedInUser));
+      setUser(loggedInUser);
 
       return { error: null };
     } catch (err: any) {
@@ -104,7 +100,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem("token");
     localStorage.removeItem("user_data");
     setUser(null);
-    window.location.href = "https://devui.change20.no/";
+    // Local-friendly logout (avoid hard redirect to production)
+    window.location.href = "/login";
   };
 
   return (

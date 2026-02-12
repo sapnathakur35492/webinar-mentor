@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { useProfile } from "@/hooks/useProfile";
 import { useDocuments } from "@/hooks/useDocuments";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -31,7 +32,6 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 
 const onboardingFields = [
   { key: "full_name", label: "Full Name", icon: User, type: "input", placeholder: "Your full name", description: "This is how you'll be addressed" },
@@ -52,6 +52,7 @@ const onboardingFields = [
 export default function Setup() {
   const { profile, isLoading, updateProfile, updateStage } = useProfile();
   const { documents } = useDocuments();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState<Record<string, string>>({});
@@ -225,8 +226,13 @@ export default function Setup() {
     setIsSaving(true);
     try {
       // 1. Prepare Data
-      const mentorId = profile?.user_id || "test_mentor_id";
-      const onboardingContext = JSON.stringify(formData, null, 2);
+      const mentorId = profile?.user_id || user?.id || "test_mentor_id";
+      // IMPORTANT: formData only contains changed fields; build a complete onboarding context
+      const onboardingPayload: Record<string, string> = {};
+      onboardingFields.forEach((f) => {
+        onboardingPayload[f.key] = getValue(f.key) || "";
+      });
+      const onboardingContext = JSON.stringify(onboardingPayload, null, 2);
 
       // 2. Call Python Backend - Now returns immediately with job_id
       const loadingToastId = toast.info("Uploading context to AI Brain...", {
@@ -239,7 +245,8 @@ export default function Setup() {
         mentorId,
         onboardingContext,
         "Hook Analysis Pending...",
-        selectedFile || undefined,
+        // Send all selected files (PDF/video/transcripts). Backend supports multiple.
+        selectedFiles.length > 0 ? selectedFiles : undefined,
         (progress) => setUploadProgress(progress)
       );
 
