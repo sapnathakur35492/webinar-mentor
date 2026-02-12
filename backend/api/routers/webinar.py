@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, Body, File, UploadFile, Form, BackgroundTasks
+from fastapi.responses import Response
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel
@@ -253,31 +254,83 @@ class VideoGenerateRequest(BaseModel):
     asset_id: Optional[str] = None
     script_text: Optional[str] = None
     source_url: Optional[str] = None
+    talking_photo_id: Optional[str] = None
+    voice_id: Optional[str] = None
+    fast_mode: Optional[bool] = True
+
+
+class InstantAudioRequest(BaseModel):
+    text: str
+    voice: Optional[str] = None
+    speed: Optional[float] = 1.0
+
+
+@router.post("/video/instant-audio")
+async def generate_instant_audio(request: InstantAudioRequest):
+    """
+    FAST path (seconds): returns MP3 audio for the given text.
+    This does NOT create anything on HeyGen.
+    Frontend can turn this into a quick preview video locally.
+    """
+    try:
+        from api.services.tts_service import tts_service
+
+        audio_bytes = tts_service.synthesize_mp3(
+            request.text,
+            voice=request.voice,
+            speed=float(request.speed or 1.0),
+        )
+        if not audio_bytes:
+            raise ValueError("TTS returned empty audio")
+
+        return Response(content=audio_bytes, media_type="audio/mpeg")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/video/generate")
 async def generate_video(request: VideoGenerateRequest):
     try:
-        from api.services.did_service import did_service
+        from api.services.heygen_service import heygen_service
         text = request.script_text
         
         # If asset_id provided AND no script_text, attempt to fetch from structure
         if request.asset_id and not text:
-            from api.models import WebinarAsset
-            asset = await WebinarAsset.get(request.asset_id)
-            if asset and asset.structure_content:
-                text = asset.structure_content[:500]
+            try:
+                from api.models import WebinarAsset
+                asset = await WebinarAsset.get(request.asset_id)
+                if asset and asset.structure_content:
+                    # Cap script length for stability
+                    text = asset.structure_content[:1200]
+            except Exception:
+                # If asset_id is invalid / DB error, don't crash video generation.
+                pass
         
         if not text:
              raise HTTPException(status_code=400, detail="No script text provided or found in asset")
 
-        # Allow source_url override from request, otherwise use service default
-        source_url = getattr(request, "source_url", None)
-        result = did_service.create_talk(text, source_url=source_url) if source_url else did_service.create_talk(text)
+        # Speed: cap script length (shorter = faster processing)
+        try:
+            from core.settings import settings
+            max_chars = int(getattr(settings, "HEYGEN_MAX_CHARS", 900))
+        except Exception:
+            max_chars = 900
+        if max_chars and len(text) > max_chars:
+            text = text[:max_chars]
+
+        # HeyGen: generate avatar video (Photo Avatar / Talking Photo)
+        # Note: `source_url` is kept for backward compatibility but is not used by HeyGen.
+        result = heygen_service.safe_generate_video(
+            script_text=text,
+            talking_photo_id=request.talking_photo_id,
+            voice_id=request.voice_id,
+            # Fast mode: default to Avatar III for speed (less expressive than IV)
+            use_avatar_iv_model=False if request.fast_mode else None,
+        )
         
         if not result:
-            raise HTTPException(status_code=500, detail="Failed to create video with D-ID")
+            raise HTTPException(status_code=500, detail="Failed to create video with HeyGen")
         
-        # SAVE talk_id to asset
+        # SAVE video id to asset (keep existing field name for UI compatibility)
         if request.asset_id:
             try:
                 from api.models import WebinarAsset
@@ -299,13 +352,23 @@ async def generate_video(request: VideoGenerateRequest):
 @router.get("/video/{talk_id}")
 async def get_video_status(talk_id: str):
     try:
-        from api.services.did_service import did_service
-        result = did_service.get_talk(talk_id)
+        from api.services.heygen_service import heygen_service
+        try:
+            result = heygen_service.get_video_status(talk_id)
+        except Exception as inner:
+            # Don't crash UI polling; return a stable error object
+            return {"id": talk_id, "status": "error", "result_url": None, "detail": str(inner)[:200]}
         if not result:
              raise HTTPException(status_code=404, detail="Talk not found")
         
         # PERSIST: If completed, save the URL to the asset
-        if result.get("status") == "completed" and result.get("result_url"):
+        # Never persist mock/sample runs.
+        if (
+            result.get("status") in ("done", "completed")
+            and result.get("result_url")
+            and "mock" not in str(result.get("provider", "")).lower()
+            and "mock" not in str(talk_id).lower()
+        ):
             try:
                 from api.models import WebinarAsset
                 # Find the asset that owns this talk
@@ -322,10 +385,50 @@ async def get_video_status(talk_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+# --- HeyGen helpers (optional, for setup) ---
+@router.get("/video/heygen/voices")
+async def heygen_list_voices():
+    """
+    Convenience endpoint to fetch HeyGen voices so you can pick a Norwegian `voice_id`.
+    """
+    try:
+        from api.services.heygen_service import heygen_service
+        return heygen_service.list_voices()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/video/heygen/avatar-groups")
+async def heygen_list_avatar_groups():
+    """
+    Convenience endpoint to list avatar groups (for Photo Avatars).
+    Each "look id" can be used as `talking_photo_id`.
+    """
+    try:
+        from api.services.heygen_service import heygen_service
+        return heygen_service.list_avatar_groups()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/video/heygen/avatar-groups/{group_id}/avatars")
+async def heygen_list_avatars_in_group(group_id: str):
+    """
+    Convenience endpoint to list avatars/looks inside a group.
+    Use the returned `id` as `talking_photo_id` for `/video/generate`.
+    """
+    try:
+        from api.services.heygen_service import heygen_service
+        return heygen_service.list_avatars_in_group(group_id)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 class PromotionalImageRequest(BaseModel):
     concept_id: str
     media_type: str  # e.g., "registration_hero", "social_ad", "email_header"
     concept_text: Optional[str] = None
+    fast_mode: bool = True
 
 @router.post("/images/generate")
 async def generate_promotional_image(request: PromotionalImageRequest):
@@ -403,10 +506,18 @@ async def generate_promotional_image(request: PromotionalImageRequest):
         try:
             client = openai.OpenAI(api_key=api_key)
             
+            # SPEED OPTIMIZATION: DALL-E 2 is significantly faster than DALL-E 3
+            # DALL-E 2 (~2-5s) vs DALL-E 3 (~15-20s)
+            is_fast = request.fast_mode
+            model = "dall-e-2" if is_fast else "dall-e-3"
+            size = "512x512" if is_fast else "1024x1024"
+            
+            print(f"Generating image ({model}, {size}) for {request.media_type} via OpenAI...")
+            
             response = client.images.generate(
-                model="dall-e-3",
+                model=model,
                 prompt=prompt,
-                size="1024x1024",  # DALL-E 3 default size
+                size=size,
                 quality="standard",
                 n=1,
             )

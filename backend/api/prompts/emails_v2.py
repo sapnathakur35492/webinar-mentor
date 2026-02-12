@@ -12,11 +12,15 @@ Design a comprehensive email sequence for a professional webinar.
 **Context:**
 Webinar Concept: {concept}
 Slide Structure: {structure}
+Product / Offer Details: {product_details}
 
 **Norwegian Market Guardrails:**
 - Tone: Professional, authoritative, yet approachable.
 - No "American Hype": Avoid "Last chance!", "Don't miss out!!!", or overly aggressive scarcity.
 - Trust-based: Focus on the value and the "logic-induction" (helping them see why they need this).
+
+**Language:**
+Write the entire output in Norwegian (Bokmål).
 
 **Sequence Requirements:**
 1. **Pre-Webinar (3-4 mails):**
@@ -73,6 +77,9 @@ Generate the full professional English copy for the email sequence based on the 
 
 **Tone:**
 Norwegian-market friendly. Authoritative. Calm. Logical.
+
+**Language:**
+Write the entire output in Norwegian (Bokmål).
 
 **Output Format (JSON Array):**
 ```json

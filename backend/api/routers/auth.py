@@ -53,4 +53,10 @@ async def login(form_data: schemas.UserLogin):
     access_token = security.create_access_token(
         data={"sub": str(user.id)}, expires_delta=access_token_expires
     )
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user_id": str(user.id),
+        "email": user.email,
+        "full_name": user.full_name,
+    }

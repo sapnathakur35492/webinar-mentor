@@ -213,6 +213,9 @@ class User(BaseModel):
 class Token(BaseModel):
     access_token: str
     token_type: str
+    user_id: Optional[str] = None
+    email: Optional[EmailStr] = None
+    full_name: Optional[str] = None
 
 class TokenData(BaseModel):
     email: Optional[str] = None

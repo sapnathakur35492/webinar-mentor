@@ -31,7 +31,6 @@ Thumbs.db
 .env.local
 .env.*.local
 backend/.env
-backend/.env.example
 frontend/.env
 frontend/mentor-maestro-main/.env
 

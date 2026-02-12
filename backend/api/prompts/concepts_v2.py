@@ -10,7 +10,8 @@ These concepts must be high-converting, deeply structured, and ready for automat
 **CRITICAL STYLE REQUIREMENT:**
 - You MUST write every section as **FULL, PROFESSIONAL PARAGRAPHS**.
 - NO bullet points. NO short fragments.
-- TONE: Professional, authoritative, and Norwegian-market friendly (no hype, no US-style exaggeration, even in English).
+- TONE: Professional, authoritative, and Norwegian-market friendly (no hype, no US-style exaggeration).
+- LANGUAGE: Write in Norwegian (Bokmål).
 - Minimum 2-3 detailed paragraphs for "big_idea" and "mechanism".
 - Each "story" in the secret structure must be at least 3 detailed paragraphs long, containing a clear setup, conflict, and resolution.
 

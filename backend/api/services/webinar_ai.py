@@ -20,7 +20,7 @@ from api.prompts.emails_v2 import (
     EMAIL_EVALUATION_PROMPT, 
     EMAIL_IMPROVEMENT_PROMPT
 )
-# from api.prompts.norwegian_prompts import ... (Commented out)
+from api.prompts.norwegian_prompts import WEBINAR_MASTER_OS_PROMPT
 from beanie import PydanticObjectId
 from typing import List, Optional
 import base64
@@ -33,7 +33,7 @@ OPENAI_API_KEY = settings.OPENAI_API_KEY
 OPENAI_ENDPOINT = "https://api.openai.com/v1/chat/completions"
 # When True, skip OpenAI and use mock concepts (for testing / when quota exhausted)
 # USE_MOCK_OPENAI = os.getenv("MOCK_OPENAI_MODE", "false").lower() == "true"
-USE_MOCK_OPENAI = True # FORCED for debugging
+USE_MOCK_OPENAI = bool(settings.MOCK_OPENAI_MODE)
 
 class WebinarAIService:
     
@@ -167,7 +167,8 @@ class WebinarAIService:
             payload = {
                 "model": "gpt-4o-mini",
                 "messages": [
-                    {"role": "system", "content": "You are a professional webinar content strategist and copywriter."},
+                    # Norwegian-market tone + webinar frameworks, per Christopher spec.
+                    {"role": "system", "content": WEBINAR_MASTER_OS_PROMPT.strip()},
                     {"role": "user", "content": prompt}
                 ],
                 "temperature": 0.7
@@ -493,7 +494,8 @@ class WebinarAIService:
         # 1. Generate Strategy/Plan
         prompt_1 = EMAIL_STRATEGY_PROMPT.format(
             concept=asset.selected_concept.big_idea if asset.selected_concept else "",
-            structure=structure_text
+            structure=structure_text,
+            product_details=product_details or ""
         )
         strategy_text = await self.generate_content(prompt_1)
         asset.email_plan_content = strategy_text

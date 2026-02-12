@@ -10,7 +10,8 @@ print(f"CRITICAL DEBUG: main.py is at {__file__}")
 print(f"CRITICAL DEBUG: CWD is {os.getcwd()}")
 env_path = os.path.join(os.getcwd(), ".env")
 print(f"DEBUG: Loading env from {env_path}")
-load_dotenv(env_path)
+# IMPORTANT: allow hot-reload to pick up .env changes
+load_dotenv(env_path, override=True)
 
 key = os.getenv("OPENAI_API_KEY")
 if not key:
