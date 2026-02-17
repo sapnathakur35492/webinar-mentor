@@ -135,43 +135,59 @@ class GeminiVideoService:
             },
         }
 
-        try:
-            print(f"[Gemini] Starting video generation (Model: {self.model}): prompt='{final_prompt[:80]}...'")
-            response = requests.post(url, headers=self._headers(), json=payload, timeout=60)
-            
-            if response.status_code == 429:
-                print("Gemini API Rate Limit Hit (429)")
-                raise HTTPException(
-                    status_code=429, 
-                    detail="Google Gemini API Rate Limit Exceeded. Please wait 1-2 minutes and try again. (Free tier limits)"
-                )
-            
-            if response.status_code == 400:
-                print(f"[Gemini] 400 Error Response: {response.text}")
-            
-            response.raise_for_status()
-            data = response.json()
-
-            operation_name = data.get("name", "")
-            if not operation_name:
-                print(f"[Gemini] Unexpected response: {data}")
-                return {"error": "No operation name returned", "status": "error"}
-
-            print(f"[Gemini] Video generation started: {operation_name}")
-            return {
-                "id": operation_name,
-                "operation_name": operation_name,
-                "status": "processing",
-                "provider": "gemini",
-            }
-        except requests.exceptions.RequestException as e:
-            error_msg = str(e)
+        # RETRY LOGIC for Rate Limits (429)
+        max_retries = 3
+        
+        for attempt in range(max_retries):
             try:
-                error_msg = e.response.text[:500] if e.response else str(e)
-            except:
-                pass
-            print(f"[Gemini] Error starting video generation: {error_msg}")
-            return {"error": error_msg, "status": "error"}
+                print(f"[Gemini] Starting video generation (Model: {self.model}): prompt='{final_prompt[:80]}...' (Attempt {attempt+1}/{max_retries})")
+                response = requests.post(url, headers=self._headers(), json=payload, timeout=60)
+                
+                if response.status_code == 429:
+                    print("Gemini API Rate Limit Hit (429)")
+                    if attempt < max_retries - 1:
+                        sleep_time = (2 ** attempt) + (0.1 * (int(time.time()) % 10)) # Backoff: 2s, 4s, etc + jitter
+                        print(f"[Gemini] Sleeping {sleep_time:.2f}s before retry...")
+                        time.sleep(sleep_time)
+                        continue
+                    else:
+                        raise HTTPException(
+                            status_code=429, 
+                            detail="Google Gemini API Rate Limit Exceeded. Please wait 1-2 minutes and try again. (Free tier limits)"
+                        )
+                
+                if response.status_code == 400:
+                    print(f"[Gemini] 400 Error Response: {response.text}")
+                
+                response.raise_for_status()
+                data = response.json()
+
+                operation_name = data.get("name", "")
+                if not operation_name:
+                    print(f"[Gemini] Unexpected response: {data}")
+                    return {"error": "No operation name returned", "status": "error"}
+
+                print(f"[Gemini] Video generation started: {operation_name}")
+                return {
+                    "id": operation_name,
+                    "operation_name": operation_name,
+                    "status": "processing",
+                    "provider": "gemini",
+                }
+            except requests.exceptions.RequestException as e:
+                # If it's a 429 that raised RequestException (unlikely with manual check above, but safely handle)
+                if hasattr(e, 'response') and e.response is not None and e.response.status_code == 429:
+                     if attempt < max_retries - 1:
+                        time.sleep(2 ** attempt)
+                        continue
+                        
+                error_msg = str(e)
+                try:
+                    error_msg = e.response.text[:500] if e.response else str(e)
+                except:
+                    pass
+                print(f"[Gemini] Error starting video generation: {error_msg}")
+                return {"error": error_msg, "status": "error"}
 
     def get_video_status(self, operation_name: str) -> Dict[str, Any]:
         """
