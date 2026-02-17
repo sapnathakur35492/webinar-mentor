@@ -415,6 +415,13 @@ async def generate_video(request: VideoGenerateRequest):
                 use_avatar_iv_model=True,
                 gender=request.gender # Pass gender from request
             )
+            
+            # Check if service caught an exception and returned an error result
+            if result.get("status") == "error":
+                error_msg = result.get("error") or result.get("detail") or "Unknown heygen error"
+                print(f"[WebinarRouter] HeyGen service returned error: {error_msg}")
+                raise HTTPException(status_code=400, detail=error_msg)
+                
         else:
             print(f"[WebinarRouter] Generating via Gemini Veo...")
             result = gemini_video_service.safe_generate_video(
