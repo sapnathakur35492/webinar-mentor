@@ -194,8 +194,8 @@ class HeyGenService:
         # SPEED & MOTION OPTIMIZATION:
         # 1. Force Avatar IV for better facial expression and head movement
         # 2. 540p resolution renders significantly faster than 720p or 1080p
-        # UPDATE: User requested faster generation. Avatar IV takes 7+ mins. Reverting to False (Avatar III) for speed.
-        body["use_avatar_iv_model"] = False
+        # UPDATE: User requested "Hand Movement" and quality. Re-enabling Avatar IV.
+        body["use_avatar_iv_model"] = True
 
         resp = requests.post(url, headers=headers, json=body, timeout=180)
         resp.raise_for_status()

@@ -326,7 +326,8 @@ async def generate_video(request: VideoGenerateRequest):
              raise HTTPException(status_code=400, detail="No script text provided or found in asset")
 
         # Cap script length for stability
-        max_chars = 900
+        # UPDATE: Increased to 5000 to allow full story reading per user request
+        max_chars = 5000
         if len(text) > max_chars:
             text = text[:max_chars]
 
