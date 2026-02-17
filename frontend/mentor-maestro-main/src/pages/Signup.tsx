@@ -24,7 +24,7 @@ export default function Signup() {
         setShowErrors(true);
         setServerErrors({});
 
-        if (!firstName || !lastName || !email || !password) {
+        if (!firstName || !email || !password) {
             return;
         }
 
@@ -47,7 +47,7 @@ export default function Signup() {
 
         setIsLoading(true);
         try {
-            const fullName = `${firstName} ${lastName}`;
+            const fullName = `${firstName} ${lastName || ""}`.trim();
             const { error } = await signUp(email, password, fullName);
             if (error) throw error;
 
@@ -70,142 +70,141 @@ export default function Signup() {
     return (
         <div className="min-h-screen w-full flex items-center justify-center overflow-hidden py-8">
             {/* Full Screen Background Image */}
+            {/* Full Screen Background Image */}
             <div
-                className="fixed inset-0 z-0"
+                className="fixed inset-0 z-0 bg-cover bg-center bg-no-repeat"
                 style={{
                     backgroundImage: 'url("https://devui.change20.no/_next/static/media/change-l-bg.f38691a1.jpg")',
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
-                    backgroundRepeat: 'no-repeat',
+                    filter: 'blur(8px)',
+                    transform: 'scale(1.05)',
                 }}
             />
 
-            {/* Signup Card - Bigger Size */}
-            <div className="relative z-10 w-full max-w-[500px] mx-4">
+            {/* Signup Card - Exact Match */}
+            <div className="relative z-10 w-full max-w-[500px] mx-4 animate-fade-in-up">
                 <div
-                    className="rounded-2xl p-10 md:p-12"
+                    className="rounded-xl p-8 md:p-10"
                     style={{
-                        background: 'linear-gradient(180deg, rgba(27, 45, 39, 0.92), rgba(19, 32, 28, 0.95))',
-                        backdropFilter: 'blur(24px)',
-                        WebkitBackdropFilter: 'blur(24px)',
-                        border: '1px solid rgba(255, 255, 255, 0.08)',
-                        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.4)',
+                        backgroundColor: '#1B2C26', // Exact dark green/black from reference
+                        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.3)',
+                        border: 'none',
                     }}
                 >
                     {/* Logo */}
-                    <div className="flex justify-center mb-8">
+                    <div className="flex justify-center mb-6">
                         <img
                             src="/logo.png"
                             alt="Change 2.0"
-                            className="h-24"
+                            className="h-20"
                         />
                     </div>
 
-                    {/* Header */}
+                    {/* Header - EXACT SAME FONT/WEIGHT */}
                     <div className="text-center mb-8">
-                        <h1 className="text-3xl font-bold text-white mb-2 italic">Opprett konto</h1>
-                        <p className="text-gray-400 text-sm">Registrer deg for å komme i gang</p>
+                        <h1 className="text-3xl font-semibold text-white mb-2 tracking-tight">Opprett konto</h1>
+                        <p className="text-gray-400 text-sm font-normal">Registrer deg for å komme i gang</p>
                     </div>
 
-                    <form onSubmit={handleSubmit} className="space-y-4">
+                    <form onSubmit={handleSubmit} className="space-y-5">
                         {/* First Name */}
-                        <div className="space-y-2">
-                            <Label htmlFor="firstName" className="text-sm font-medium text-white">
+                        <div className="space-y-1.5">
+                            <Label htmlFor="firstName" className="text-sm font-normal text-gray-300">
                                 Fornavn
                             </Label>
                             <div className="relative">
-                                <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500" />
+                                <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500" />
                                 <Input
                                     id="firstName"
                                     type="text"
                                     placeholder="Fornavn"
                                     value={firstName}
                                     onChange={(e) => setFirstName(e.target.value)}
-                                    className={`pl-12 h-14 bg-white/5 border border-white/10 text-white placeholder:text-gray-500 rounded-xl focus:border-[#3bba69] focus:ring-1 focus:ring-[#3bba69] transition-all ${showErrors && !firstName ? "border-red-500 ring-1 ring-red-500" : ""}`}
+                                    // Darker input background, explicit border
+                                    className={`pl-11 h-12 bg-[#253630] border-gray-700/50 text-white placeholder:text-gray-500 rounded-lg focus:border-[#7AB93C] focus:ring-1 focus:ring-[#7AB93C] transition-all font-normal ${showErrors && !firstName ? "border-red-500/80 ring-1 ring-red-500/50" : ""}`}
                                 />
                             </div>
                             {showErrors && !firstName && (
-                                <p className="text-red-500 text-xs">Dette feltet er obligatorisk</p>
+                                <p className="text-[#EF4444] text-xs font-normal">Dette feltet er obligatorisk</p>
                             )}
                         </div>
 
                         {/* Last Name */}
-                        <div className="space-y-2">
-                            <Label htmlFor="lastName" className="text-sm font-medium text-white">
-                                Etternavn
+                        <div className="space-y-1.5">
+                            <Label htmlFor="lastName" className="text-sm font-normal text-gray-300">
+                                Etternavn <span className="text-gray-500 text-xs font-normal ml-1">(valgfritt)</span>
                             </Label>
                             <div className="relative">
-                                <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500" />
+                                <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500" />
                                 <Input
                                     id="lastName"
                                     type="text"
                                     placeholder="Etternavn"
                                     value={lastName}
                                     onChange={(e) => setLastName(e.target.value)}
-                                    className={`pl-12 h-14 bg-white/5 border border-white/10 text-white placeholder:text-gray-500 rounded-xl focus:border-[#3bba69] focus:ring-1 focus:ring-[#3bba69] transition-all ${showErrors && !lastName ? "border-red-500 ring-1 ring-red-500" : ""}`}
+                                    className={`pl-11 h-12 bg-[#253630] border-gray-700/50 text-white placeholder:text-gray-500 rounded-lg focus:border-[#7AB93C] focus:ring-1 focus:ring-[#7AB93C] transition-all font-normal`}
                                 />
                             </div>
-                            {showErrors && !lastName && (
-                                <p className="text-red-500 text-xs">Dette feltet er obligatorisk</p>
-                            )}
                         </div>
 
                         {/* Email */}
-                        <div className="space-y-2">
-                            <Label htmlFor="email" className="text-sm font-medium text-white">
+                        <div className="space-y-1.5">
+                            <Label htmlFor="email" className="text-sm font-normal text-gray-300">
                                 E-post
                             </Label>
                             <div className="relative">
-                                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500" />
+                                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500" />
                                 <Input
                                     id="email"
                                     type="email"
                                     placeholder="demo.doe@example.com"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
-                                    className={`pl-12 h-14 bg-white/5 border border-white/10 text-white placeholder:text-gray-500 rounded-xl focus:border-[#3bba69] focus:ring-1 focus:ring-[#3bba69] transition-all ${showErrors && !email ? "border-red-500 ring-1 ring-red-500" : ""}`}
+                                    className={`pl-11 h-12 bg-[#253630] border-gray-700/50 text-white placeholder:text-gray-500 rounded-lg focus:border-[#7AB93C] focus:ring-1 focus:ring-[#7AB93C] transition-all font-normal ${showErrors && !email ? "border-red-500/80 ring-1 ring-red-500/50" : ""}`}
                                 />
                             </div>
                             {showErrors && !email && (
-                                <p className="text-red-500 text-xs">Dette feltet er obligatorisk</p>
+                                <p className="text-[#EF4444] text-xs font-normal">Dette feltet er obligatorisk</p>
                             )}
                             {serverErrors.email && (
-                                <p className="text-red-500 text-xs">{serverErrors.email}</p>
+                                <p className="text-[#EF4444] text-xs font-normal">{serverErrors.email}</p>
                             )}
                         </div>
 
                         {/* Password */}
-                        <div className="space-y-2">
-                            <Label htmlFor="password" className="text-sm font-medium text-white">
+                        <div className="space-y-1.5">
+                            <Label htmlFor="password" className="text-sm font-normal text-gray-300">
                                 Passord
                             </Label>
                             <div className="relative">
-                                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500" />
+                                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500" />
                                 <Input
                                     id="password"
                                     type="password"
                                     placeholder="*** *** ****"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
-                                    className={`pl-12 h-14 bg-white/5 border border-white/10 text-white placeholder:text-gray-500 rounded-xl focus:border-[#3bba69] focus:ring-1 focus:ring-[#3bba69] transition-all ${showErrors && !password ? "border-red-500 ring-1 ring-red-500" : ""}`}
+                                    className={`pl-11 h-12 bg-[#253630] border-gray-700/50 text-white placeholder:text-gray-500 rounded-lg focus:border-[#7AB93C] focus:ring-1 focus:ring-[#7AB93C] transition-all font-normal ${showErrors && !password ? "border-red-500/80 ring-1 ring-red-500/50" : ""}`}
                                 />
                             </div>
                             {showErrors && !password && (
-                                <p className="text-red-500 text-xs">Dette feltet er obligatorisk</p>
+                                <p className="text-[#EF4444] text-xs font-normal">Dette feltet er obligatorisk</p>
                             )}
                         </div>
 
-                        {/* Register Button */}
+                        {/* Register Button - LIME GREEN */}
                         <Button
                             type="submit"
                             disabled={isLoading}
-                            className="w-full h-14 text-white font-semibold text-base rounded-full shadow-lg transition-all duration-300 hover:opacity-90 mt-4"
+                            className="w-full h-12 text-[#1B2C26] font-bold text-base rounded-full mt-6 hover:opacity-90 transition-opacity"
                             style={{
-                                background: 'linear-gradient(135deg, #3bba69, #279b65)',
+                                backgroundColor: '#84cc16', // Lime-500 equivalent, matching reference
                             }}
                         >
                             {isLoading ? (
-                                <Loader2 className="w-5 h-5 animate-spin" />
+                                <div className="flex items-center gap-2">
+                                    <Loader2 className="w-5 h-5 animate-spin" />
+                                    <span>Behandler...</span>
+                                </div>
                             ) : (
                                 "Register"
                             )}
@@ -213,11 +212,11 @@ export default function Signup() {
 
                         {/* Login Link */}
                         <div className="text-center mt-6">
-                            <p className="text-sm text-gray-400">
+                            <p className="text-sm text-gray-400 font-normal">
                                 Har en konto{" "}
                                 <Link
                                     to="/login"
-                                    className="text-[#3bba69] hover:underline font-medium"
+                                    className="text-[#84cc16] hover:underline hover:text-[#a3e635] font-normal ml-1"
                                 >
                                     Logg på
                                 </Link>

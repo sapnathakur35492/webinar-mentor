@@ -377,7 +377,8 @@ export default function VideoPage() {
                                                 autoPlay={false}
                                                 muted={false}
                                                 playsInline
-                                                className="rounded-lg w-full shadow-lg border border-border object-contain max-h-[800px] bg-black"
+                                                className="rounded-lg w-full h-auto shadow-lg border border-border object-contain bg-black"
+                                                style={{ minHeight: "400px", maxHeight: "80vh" }}
                                             />
                                         )}
                                     </div>
