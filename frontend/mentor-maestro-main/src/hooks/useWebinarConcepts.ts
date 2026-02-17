@@ -93,13 +93,14 @@ export function useWebinarConcepts() {
         });
 
       } catch (err: any) {
-        console.error("[useWebinarConcepts] Failed to fetch asset from backend:", err?.message || err);
-        toast.error("Failed to load concepts: " + (err?.message || "Unknown error"));
+        console.warn("[useWebinarConcepts] No concepts available:", err?.message || err);
+        // Don't show toast on Dashboard load — this is expected when no asset exists yet
         return [];
       }
     },
     enabled: !!assetId,
-    refetchInterval: 5000,
+    refetchInterval: assetId ? 10000 : false, // Only poll if asset exists, every 10s
+    retry: 1, // Don't retry too many times
   });
 
   const finalConcept = concepts.find(c => c.is_final);

@@ -1,5 +1,6 @@
 import { MainLayout } from "@/components/layout/MainLayout";
 import { useProfile, PipelineStage } from "@/hooks/useProfile";
+import { useAuth } from "@/contexts/AuthContext";
 import { useDocuments } from "@/hooks/useDocuments";
 import { useWebinarConcepts } from "@/hooks/useWebinarConcepts";
 import { useEmailSequences } from "@/hooks/useEmailSequences";
@@ -35,25 +36,11 @@ const Index = () => {
   const { concepts, latestConcept } = useWebinarConcepts();
   const { sequences } = useEmailSequences();
 
-  const currentStageIndex = pipelineStages.findIndex(s => s.id === profile?.current_stage);
+  // Use auth context name as fallback while profile loads
+  const { user } = useAuth();
+  const displayName = profile?.full_name || user?.full_name || "Mentor";
 
-  if (profileLoading) {
-    return (
-      <MainLayout>
-        <div className="flex items-center justify-center h-64">
-          <div className="flex flex-col items-center gap-4">
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full blur-xl opacity-50 animate-pulse" />
-              <div className="relative h-16 w-16 rounded-full bg-gradient-to-r from-green-400 to-emerald-500 flex items-center justify-center">
-                <Sparkles className="h-8 w-8 text-white animate-spin" style={{ animationDuration: '2s' }} />
-              </div>
-            </div>
-            <div className="text-gray-500 font-medium animate-pulse">Loading your dashboard...</div>
-          </div>
-        </div>
-      </MainLayout>
-    );
-  }
+  const currentStageIndex = pipelineStages.findIndex(s => s.id === (profile?.current_stage || "onboarding"));
 
   return (
     <MainLayout>
@@ -68,7 +55,7 @@ const Index = () => {
                 </p>
               </div>
               <h1 className="text-2xl font-bold text-white mb-1">
-                {profile?.full_name?.split(' ')[0] || "Mentor"}!
+                {displayName.split(' ')[0]}!
               </h1>
               <p className="text-white/60 text-sm max-w-md">
                 Your AI-powered webinar factory is ready. Let's create something amazing today.

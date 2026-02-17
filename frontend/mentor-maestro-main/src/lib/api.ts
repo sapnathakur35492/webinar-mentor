@@ -105,12 +105,14 @@ export const api = {
     return response.data;
   },
 
-  // 6. Generate Video
-  generateVideo: async (assetId?: string, scriptText?: string, sourceUrl?: string) => {
+  // 6. Generate Video (Gemini Veo -> HeyGen)
+  generateVideo: async (assetId?: string, scriptText?: string, imagePath?: string, languageTone?: string, gender?: string) => {
     const response = await axios.post(`${API_Base}/video/generate`, {
       asset_id: assetId,
       script_text: scriptText,
-      source_url: sourceUrl
+      image_path: imagePath,
+      language_tone: languageTone,
+      gender: gender || "female"
     });
     return response.data;
   },
@@ -171,6 +173,16 @@ export const api = {
       asset_id: assetId,
       concept_id: conceptId,
       feedback: feedback
+    });
+    return response.data;
+  },
+
+  // 13. Upload Avatar Image (for video generation)
+  uploadAvatarImage: async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await axios.post(`${API_Base}/video/upload-avatar`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
     });
     return response.data;
   }

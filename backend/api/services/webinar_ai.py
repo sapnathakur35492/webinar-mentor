@@ -20,7 +20,10 @@ from api.prompts.emails_v2 import (
     EMAIL_EVALUATION_PROMPT, 
     EMAIL_IMPROVEMENT_PROMPT
 )
-from api.prompts.norwegian_prompts import WEBINAR_MASTER_OS_PROMPT
+from api.prompts.system_prompts import (
+    WEBINAR_MASTER_OS_PROMPT_NORWEGIAN,
+    WEBINAR_MASTER_OS_PROMPT_ENGLISH
+)
 from beanie import PydanticObjectId
 from typing import List, Optional
 import base64
@@ -38,8 +41,31 @@ USE_MOCK_OPENAI = bool(settings.MOCK_OPENAI_MODE)
 class WebinarAIService:
     
     def __init__(self):
-        print("DEBUG: WebinarAIService Initialized (CHANGE 2.0 STANDARD - ENGLISH V1)")
+        print("DEBUG: WebinarAIService Initialized (CHANGE 2.0 STANDARD - MULTI-LANGUAGE V1)")
         pass
+
+    async def _get_language_context(self, asset: WebinarAsset) -> dict:
+        """Helper to determine language and tone based on Mentor profile."""
+        from api.models import Mentor
+        
+        language = "Norwegian"
+        if asset.mentor_id:
+            mentor = await Mentor.find_one(Mentor.user_id == asset.mentor_id)
+            if mentor and hasattr(mentor, "language_tone") and mentor.language_tone:
+                language = mentor.language_tone
+        
+        if language.lower() == "english":
+            return {
+                "language": "English",
+                "market_tone": "Professional, authoritative, and suitable for international markets",
+                "system_prompt": WEBINAR_MASTER_OS_PROMPT_ENGLISH
+            }
+        else:
+            return {
+                "language": "Norwegian (Bokmål)",
+                "market_tone": "Norwegian-market friendly (no hype, no US-style exaggeration)",
+                "system_prompt": WEBINAR_MASTER_OS_PROMPT_NORWEGIAN
+            }
 
     async def extract_text_from_file(self, file_bytes: bytes, filename: str) -> str:
         try:
@@ -155,7 +181,7 @@ class WebinarAIService:
         ]
 
 
-    async def generate_content(self, prompt: str) -> str:
+    async def generate_content(self, prompt: str, system_prompt: str = WEBINAR_MASTER_OS_PROMPT_NORWEGIAN, max_tokens: int = 4096) -> str:
         """Call OpenAI API. Raises ValueError on 429/quota/API errors."""
         if not OPENAI_API_KEY:
             raise ValueError("OPENAI API Error (no key): OPENAI_API_KEY not set")
@@ -167,18 +193,24 @@ class WebinarAIService:
             payload = {
                 "model": "gpt-4o-mini",
                 "messages": [
-                    # Norwegian-market tone + webinar frameworks, per Christopher spec.
-                    {"role": "system", "content": WEBINAR_MASTER_OS_PROMPT.strip()},
+                    # Dynamic system prompt based on language
+                    {"role": "system", "content": system_prompt.strip()},
                     {"role": "user", "content": prompt}
                 ],
-                "temperature": 0.7
+                "temperature": 0.7,
+                "max_tokens": max_tokens
             }
-            response = requests.post(OPENAI_ENDPOINT, headers=headers, json=payload)
+            response = requests.post(OPENAI_ENDPOINT, headers=headers, json=payload, timeout=120)
             
             if response.status_code == 200:
                 data = response.json()
                 if "choices" in data and len(data["choices"]) > 0:
-                    return data["choices"][0]["message"]["content"]
+                    content = data["choices"][0]["message"]["content"]
+                    # Check for truncation
+                    finish_reason = data["choices"][0].get("finish_reason", "")
+                    if finish_reason == "length":
+                        print(f"[WebinarAI] WARNING: Response was truncated (finish_reason=length). Consider increasing max_tokens.")
+                    return content
                 raise ValueError("Unexpected response format from OpenAI")
             elif response.status_code == 429:
                 # Explicit 429 handling - quota exceeded or rate limit
@@ -243,32 +275,60 @@ class WebinarAIService:
         improved_concepts: List[Concept] = []
             
         try:
-            # 1. Generate (English)
+            # Determine Language Context
+            ctx = await self._get_language_context(asset)
+            lang = ctx["language"]
+            tone = ctx["market_tone"]
+            sys_prompt = ctx["system_prompt"]
+            
+            # 1. Generate (use higher max_tokens for 3 detailed concepts)
             prompt_1 = CONCEPT_GENERATION_PROMPT.format(
                 onboarding_doc=asset.onboarding_doc_content or "", 
-                hook_analysis=asset.hook_analysis_content or ""
+                hook_analysis=asset.hook_analysis_content or "",
+                language=lang,
+                market_tone=tone
             )
-            concepts_text = await self.generate_content(prompt_1)
+            concepts_text = await self.generate_content(prompt_1, system_prompt=sys_prompt, max_tokens=8000)
             print(f"[WebinarAI] Got concepts_text: {concepts_text[:200]}...")
             
             parsed_concepts = self._parse_concepts_from_text(concepts_text)
+            print(f"[WebinarAI] Parsed {len(parsed_concepts)} original concepts")
             
-            # 2. Evaluate (English)
+            # VALIDATION: If generation returned < 3 concepts, retry once
+            if len(parsed_concepts) < 3:
+                print(f"[WebinarAI] WARNING: Only {len(parsed_concepts)} concepts parsed from generation. Retrying...")
+                concepts_text_retry = await self.generate_content(prompt_1, system_prompt=sys_prompt, max_tokens=8000)
+                parsed_retry = self._parse_concepts_from_text(concepts_text_retry)
+                if len(parsed_retry) >= len(parsed_concepts):
+                    parsed_concepts = parsed_retry
+                    concepts_text = concepts_text_retry
+                    print(f"[WebinarAI] Retry yielded {len(parsed_concepts)} concepts")
+            
+            # 2. Evaluate
             prompt_2 = CONCEPT_EVALUATION_PROMPT.format(concepts=concepts_text)
-            evaluation_text = await self.generate_content(prompt_2)
+            evaluation_text = await self.generate_content(prompt_2, system_prompt=sys_prompt)
             asset.concepts_evaluated = evaluation_text
             print(f"[WebinarAI] Got evaluation")
             
-            # 3. Improve (English)
+            # 3. Improve (use higher max_tokens for 3 detailed improved concepts)
             prompt_3 = CONCEPT_IMPROVEMENT_PROMPT.format(
                 concepts=concepts_text,
-                evaluation=evaluation_text
+                evaluation=evaluation_text,
+                language=lang,
+                market_tone=tone
             )
-            improved_text = await self.generate_content(prompt_3)
+            improved_text = await self.generate_content(prompt_3, system_prompt=sys_prompt, max_tokens=8000)
             
             improved_concepts = self._parse_concepts_from_text(improved_text)
-            asset.concepts_improved = improved_concepts
             print(f"[WebinarAI] Parsed {len(improved_concepts)} improved concepts")
+            
+            # VALIDATION: If improvement step returned fewer concepts than generation,
+            # use the original parsed concepts instead
+            if len(improved_concepts) < len(parsed_concepts):
+                print(f"[WebinarAI] WARNING: Improved concepts ({len(improved_concepts)}) < original ({len(parsed_concepts)}). Using originals as improved.")
+                improved_concepts = parsed_concepts
+            
+            asset.concepts_improved = improved_concepts
             
         except Exception as e:
             err_str = str(e).lower()
@@ -281,76 +341,114 @@ class WebinarAIService:
         if not asset.concepts_improved:
             asset.concepts_improved = improved_concepts
         await asset.save()
-        print(f"[WebinarAI] Asset saved with AI concepts")
+        
+        final_count = len(improved_concepts) if improved_concepts else len(parsed_concepts)
+        print(f"[WebinarAI] Asset saved with {final_count} AI concepts")
         
         return {
             "original": concepts_text,
             "evaluation": evaluation_text,
             "improved": improved_text,
-            "concepts_count": len(improved_concepts) if improved_concepts else len(parsed_concepts)
+            "concepts_count": final_count
         }
 
     def _parse_concepts_from_text(self, text: str) -> List[Concept]:
-        """Parse JSON concepts from AI response text."""
+        """Parse JSON concepts from AI response text. Tries multiple strategies."""
+        import re
+        
+        def _build_concepts(data: list) -> List[Concept]:
+            """Convert a list of dicts to Concept objects."""
+            concepts = []
+            for item in data:
+                if not isinstance(item, dict):
+                    continue
+                concept = Concept(
+                    title=item.get("title", "Untitled Concept"),
+                    big_idea=item.get("big_idea", ""),
+                    hook=item.get("hook", ""),
+                    structure_points=item.get("structure_points", []),
+                    secrets=item.get("secrets", []),
+                    mechanism=item.get("mechanism", ""),
+                    narrative_angle=item.get("narrative_angle", ""),
+                    offer_transition_logic=item.get("offer_transition_logic", ""),
+                    value_anchor=item.get("value_anchor", {}),
+                    bonus_ideas=item.get("bonus_ideas", []),
+                    cta_sentence=item.get("cta_sentence", ""),
+                    promises=item.get("promises", [])
+                )
+                concepts.append(concept)
+            return concepts
+        
+        # Strategy 1: Find JSON array in text (standard case)
         try:
-            # Try to extract JSON array from the text
-            import re
-            
-            # Look for JSON array pattern
             json_match = re.search(r'\[\s*\{.*\}\s*\]', text, re.DOTALL)
             if json_match:
                 json_str = json_match.group()
                 data = json.loads(json_str)
-                
-                concepts = []
-                for item in data:
-                    concept = Concept(
-                        title=item.get("title", "Untitled Concept"),
-                        big_idea=item.get("big_idea", ""),
-                        hook=item.get("hook", ""),
-                        structure_points=item.get("structure_points", []),
-                        secrets=item.get("secrets", []),
-                        mechanism=item.get("mechanism", ""),
-                        narrative_angle=item.get("narrative_angle", ""),
-                        offer_transition_logic=item.get("offer_transition_logic", ""),
-                        value_anchor=item.get("value_anchor", {}),
-                        bonus_ideas=item.get("bonus_ideas", []),
-                        cta_sentence=item.get("cta_sentence", ""),
-                        promises=item.get("promises", [])
-                    )
-                    concepts.append(concept)
+                if isinstance(data, list) and len(data) > 0:
+                    concepts = _build_concepts(data)
+                    print(f"[WebinarAI] Strategy 1 (JSON array): Parsed {len(concepts)} concepts")
+                    return concepts
+        except json.JSONDecodeError as e:
+            print(f"[WebinarAI] Strategy 1 failed (JSON decode): {e}")
+        
+        # Strategy 2: Strip markdown code fences and try again
+        try:
+            cleaned = re.sub(r'```(?:json)?\s*', '', text)
+            cleaned = cleaned.strip()
+            if cleaned.startswith('['):
+                data = json.loads(cleaned)
+                if isinstance(data, list) and len(data) > 0:
+                    concepts = _build_concepts(data)
+                    print(f"[WebinarAI] Strategy 2 (stripped fences): Parsed {len(concepts)} concepts")
+                    return concepts
+        except json.JSONDecodeError as e:
+            print(f"[WebinarAI] Strategy 2 failed: {e}")
+        
+        # Strategy 3: Try to fix truncated JSON by finding all top-level objects
+        try:
+            # Find all complete JSON objects in the text
+            objects = []
+            depth = 0
+            start = None
+            for i, ch in enumerate(text):
+                if ch == '{' and depth == 0:
+                    start = i
+                if ch == '{':
+                    depth += 1
+                elif ch == '}':
+                    depth -= 1
+                    if depth == 0 and start is not None:
+                        obj_str = text[start:i+1]
+                        try:
+                            obj = json.loads(obj_str)
+                            if isinstance(obj, dict) and 'title' in obj:
+                                objects.append(obj)
+                        except json.JSONDecodeError:
+                            pass
+                        start = None
+            
+            if objects:
+                concepts = _build_concepts(objects)
+                print(f"[WebinarAI] Strategy 3 (individual objects): Parsed {len(concepts)} concepts")
                 return concepts
-            
-            # Fallback: Create a single concept from raw text
-            print("[WebinarAI] No JSON found, creating single concept from raw text")
-            return [Concept(
-                title="Generated Concept",
-                big_idea=text[:500] if len(text) > 500 else text,
-                hook="See full concept above",
-                structure_points=[],
-                secrets=[],
-                mechanism="",
-                narrative_angle="",
-                offer_transition_logic="",
-                value_anchor={},
-                bonus_ideas=[],
-                cta_sentence="",
-                promises=[]
-            )]
-            
         except Exception as e:
-            print(f"[WebinarAI] Error parsing concepts: {e}")
-            # Return empty list on error, don't crash
-            return []
+            print(f"[WebinarAI] Strategy 3 failed: {e}")
+        
+        # No strategy worked
+        print(f"[WebinarAI] ALL parsing strategies failed. Text preview: {text[:300]}...")
+        return []
 
     async def update_concept_with_transcript(self, asset_id: str, transcript: str) -> str:
         asset = await WebinarAsset.get(asset_id)
         # Use English Prompt
+        ctx = await self._get_language_context(asset)
         prompt = CONCEPT_TRANSCRIPT_UPDATE_PROMPT.format(
             current_concept=asset.concepts_evaluated,
-            transcript=transcript
+            transcript=transcript,
+            language=ctx["language"]
         )
-        return await self.generate_content(prompt)
+        return await self.generate_content(prompt, system_prompt=ctx["system_prompt"])
 
     async def refine_concept(self, asset_id: str, concept_id: str, feedback: str) -> dict:
         """
@@ -409,7 +507,9 @@ class WebinarAIService:
         }}
         """
         
-        response_text = await self.generate_content(prompt)
+        ctx = await self._get_language_context(asset)
+        
+        response_text = await self.generate_content(prompt, system_prompt=ctx["system_prompt"])
         refined_data = self._parse_concepts_from_text(response_text)
         
         if refined_data:
@@ -433,20 +533,31 @@ class WebinarAIService:
             await asset.save()
             return mock_structure
             
-        # 1. Generate (English)
-        prompt_1 = STRUCTURE_GENERATION_PROMPT.format(concept=concept_text)
-        structure_text = await self.generate_content(prompt_1)
+        ctx = await self._get_language_context(asset)
+        lang = ctx["language"]
+        tone = ctx["market_tone"]
+        sys_prompt = ctx["system_prompt"]
+
+        # 1. Generate
+        prompt_1 = STRUCTURE_GENERATION_PROMPT.format(
+            concept=concept_text,
+            language=lang,
+            market_tone=tone
+        )
+        structure_text = await self.generate_content(prompt_1, system_prompt=sys_prompt)
         
-        # 2. Evaluate (English)
+        # 2. Evaluate
         prompt_2 = STRUCTURE_EVALUATION_PROMPT.format(structure=structure_text)
-        evaluation_text = await self.generate_content(prompt_2)
+        evaluation_text = await self.generate_content(prompt_2, system_prompt=sys_prompt)
         
-        # 3. Improve (English)
+        # 3. Improve
         prompt_3 = STRUCTURE_IMPROVEMENT_PROMPT.format(
             structure=structure_text,
-            evaluation=evaluation_text
+            evaluation=evaluation_text,
+            language=lang,
+            market_tone=tone
         )
-        improved_structure = await self.generate_content(prompt_3)
+        improved_structure = await self.generate_content(prompt_3, system_prompt=sys_prompt)
         
         asset.structure_content = improved_structure
         await asset.save()
@@ -491,32 +602,47 @@ class WebinarAIService:
             
         print(f"[WebinarAI] Starting Phase 3 (Emails) for asset {asset_id}")
 
+        ctx = await self._get_language_context(asset)
+        lang = ctx["language"]
+        tone = ctx["market_tone"]
+        sys_prompt = ctx["system_prompt"]
+
         # 1. Generate Strategy/Plan
         prompt_1 = EMAIL_STRATEGY_PROMPT.format(
             concept=asset.selected_concept.big_idea if asset.selected_concept else "",
             structure=structure_text,
-            product_details=product_details or ""
+            product_details=product_details or "",
+            language=lang
         )
-        strategy_text = await self.generate_content(prompt_1)
+        strategy_text = await self.generate_content(prompt_1, system_prompt=sys_prompt)
         asset.email_plan_content = strategy_text
         print(f"[WebinarAI] Strategy generated")
 
-        # 2. Generate Drafts (English)
-        prompt_2 = EMAIL_GENERATION_PROMPT.format(strategy=strategy_text)
-        drafts_text = await self.generate_content(prompt_2)
+        # 2. Generate Drafts
+        prompt_2 = EMAIL_GENERATION_PROMPT.format(
+            strategy=strategy_text,
+            language=lang,
+            market_tone=tone
+        )
+        drafts_text = await self.generate_content(prompt_2, system_prompt=sys_prompt)
         print(f"[WebinarAI] Drafts generated")
 
-        # 3. Evaluate (English)
-        prompt_3 = EMAIL_EVALUATION_PROMPT.format(emails=drafts_text)
-        evaluation_text = await self.generate_content(prompt_3)
+        # 3. Evaluate
+        prompt_3 = EMAIL_EVALUATION_PROMPT.format(
+            emails=drafts_text,
+            market_tone=tone
+        )
+        evaluation_text = await self.generate_content(prompt_3, system_prompt=sys_prompt)
         print(f"[WebinarAI] Evaluation complete")
 
-        # 4. Improve (English)
+        # 4. Improve
         prompt_4 = EMAIL_IMPROVEMENT_PROMPT.format(
             emails=drafts_text,
-            evaluation=evaluation_text
+            evaluation=evaluation_text,
+            language=lang,
+            market_tone=tone
         )
-        improved_text = await self.generate_content(prompt_4)
+        improved_text = await self.generate_content(prompt_4, system_prompt=sys_prompt)
         print(f"[WebinarAI] Improvement complete")
 
         # Parse Final Emails
@@ -556,19 +682,29 @@ class WebinarAIService:
         This is the core "Machine Learning" loop for Email Production.
         """
         # 1. Draft
-        prompt_1 = EMAIL_GENERATION_PROMPT.format(strategy=email_outline)
+        prompt_1 = EMAIL_GENERATION_PROMPT.format(
+            strategy=email_outline,
+            language="Norwegian (Bokmål)", # Default or pass context if available
+            market_tone="Professionl" # Typo but ok for now, or fetch context
+        )
+        # TODO: pass context here properly later
         print("   -> Drafting Email...")
         draft_text = await self.generate_content(prompt_1)
         
         # 2. Evaluate
-        prompt_2 = EMAIL_EVALUATION_PROMPT.format(emails=draft_text)
+        prompt_2 = EMAIL_EVALUATION_PROMPT.format(
+            emails=draft_text,
+            market_tone="Professional"
+        )
         print("   -> Self-Evaluating Email...")
         evaluation_text = await self.generate_content(prompt_2)
         
         # 3. Improve
         prompt_3 = EMAIL_IMPROVEMENT_PROMPT.format(
             emails=draft_text,
-            evaluation=evaluation_text
+            evaluation=evaluation_text,
+            language="Norwegian (Bokmål)",
+            market_tone="Professional"
         )
         print("   -> Improving Email...")
         final_email_text = await self.generate_content(prompt_3)

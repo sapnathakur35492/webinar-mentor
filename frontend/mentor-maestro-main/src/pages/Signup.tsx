@@ -28,13 +28,31 @@ export default function Signup() {
             return;
         }
 
+        // Email format validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            toast.error("Please enter a valid email address");
+            return;
+        }
+
+        if (password.length < 6) {
+            toast.error("Password must be at least 6 characters");
+            return;
+        }
+
+        if (firstName.trim().length < 2) {
+            toast.error("First name must be at least 2 characters");
+            return;
+        }
+
         setIsLoading(true);
         try {
             const fullName = `${firstName} ${lastName}`;
             const { error } = await signUp(email, password, fullName);
             if (error) throw error;
 
-            navigate("/");
+            toast.success("Registration successful! Welcome! 🎉");
+            navigate("/setup");
         } catch (error: any) {
             console.error("Signup error:", error);
             const errorMessage = error.message || "Registrering feilet";

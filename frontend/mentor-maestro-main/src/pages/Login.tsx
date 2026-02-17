@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Loader2, User, Mail } from "lucide-react";
+import { Loader2, User, Lock } from "lucide-react";
 
 export default function Login() {
     const [email, setEmail] = useState("");
@@ -24,12 +24,24 @@ export default function Login() {
             return;
         }
 
+        // Email format validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            toast.error("Please enter a valid email address");
+            return;
+        }
+
+        if (password.length < 6) {
+            toast.error("Password must be at least 6 characters");
+            return;
+        }
+
         setIsLoading(true);
         try {
             const { error } = await signIn(email, password);
             if (error) throw error;
 
-            navigate("/");
+            navigate("/setup");
         } catch (error: any) {
             toast.error(error.message || "Innlogging feilet");
         } finally {
@@ -105,7 +117,7 @@ export default function Login() {
                                 Passord
                             </Label>
                             <div className="relative">
-                                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500" />
+                                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500" />
                                 <Input
                                     id="password"
                                     type="password"

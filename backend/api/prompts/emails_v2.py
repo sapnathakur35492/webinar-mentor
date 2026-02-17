@@ -14,13 +14,13 @@ Webinar Concept: {concept}
 Slide Structure: {structure}
 Product / Offer Details: {product_details}
 
-**Norwegian Market Guardrails:**
+**{language} Market Guardrails:**
 - Tone: Professional, authoritative, yet approachable.
 - No "American Hype": Avoid "Last chance!", "Don't miss out!!!", or overly aggressive scarcity.
 - Trust-based: Focus on the value and the "logic-induction" (helping them see why they need this).
 
 **Language:**
-Write the entire output in Norwegian (Bokmål).
+Write the entire output in {language}.
 
 **Sequence Requirements:**
 1. **Pre-Webinar (3-4 mails):**
@@ -76,10 +76,10 @@ Generate the full professional English copy for the email sequence based on the 
 - **Signature:** Professional sign-off.
 
 **Tone:**
-Norwegian-market friendly. Authoritative. Calm. Logical.
+{market_tone}. Authoritative. Calm. Logical.
 
 **Language:**
-Write the entire output in Norwegian (Bokmål).
+Write the entire output in {language}.
 
 **Output Format (JSON Array):**
 ```json
@@ -104,7 +104,7 @@ EMAIL_EVALUATION_PROMPT = """
 **Criteria:**
 1. **Authenticity**: Does it sound like a real professional, or an AI sales bot?
 2. **Logic-Induction**: Does the copy actually teach/prove the mechanism?
-3. **Tone**: Is it calm and authoritative (Norwegian style) or hypey?
+3. **Tone**: Is it calm and authoritative ({market_tone}) or hypey?
 4. **Transition**: Is the move from education to the call-to-action natural?
 
 Output JSON with:
@@ -117,6 +117,8 @@ EMAIL_IMPROVEMENT_PROMPT = """
 # Email Refinement (Change 2.0)
 
 Improve the email copy based on the evaluation. Focus on deepening the professional narrative and stripping away any lingering marketing clichés.
+
+**Ensure the tone is {market_tone} and language is {language}.**
 
 **Original:**
 {emails}

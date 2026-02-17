@@ -216,6 +216,7 @@ class Token(BaseModel):
     user_id: Optional[str] = None
     email: Optional[EmailStr] = None
     full_name: Optional[str] = None
+    mentor_id: Optional[str] = None
 
 class TokenData(BaseModel):
     email: Optional[str] = None

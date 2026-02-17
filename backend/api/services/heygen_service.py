@@ -4,7 +4,7 @@ import requests
 from typing import Any, Dict, Optional
 from core.settings import settings
 import time
-
+from dotenv import load_dotenv
 
 class HeyGenService:
     """
@@ -29,6 +29,12 @@ class HeyGenService:
             settings, "HEYGEN_USE_AVATAR_IV", True
         )
         self._cached_voice_id: Optional[str] = None
+        
+        # Hardcoded High-Quality Norwegian Voices
+        self.NORWEGIAN_VOICE_IDS = {
+            "female": "1d8e477dd21b40c1ab6726e50329a765", # Iselin - Natural
+            "male": "4efd43386dc844c29d532cb5d5690f86"    # Finn - Natural
+        }
 
     def _headers(self) -> Dict[str, str]:
         # Refresh key from env (so .env edits work without manual restarts)
@@ -43,6 +49,12 @@ class HeyGenService:
         Upload a photo to get a talking_photo_id.
         Docs: POST https://upload.heygen.com/v1/talking_photo
         """
+        # Refresh key from env just in case (force reload from disk)
+        load_dotenv(override=True)
+        self.api_key = os.getenv("HEYGEN_API_KEY") or self.api_key
+        if not self.api_key:
+            raise ValueError("HEYGEN_API_KEY is not set")
+
         content_type, _ = mimetypes.guess_type(image_path)
         if content_type not in ("image/jpeg", "image/png"):
             # Default to jpeg if unknown
@@ -66,14 +78,19 @@ class HeyGenService:
     def generate_video(
         self,
         script_text: str,
+        image_path: Optional[str] = None,
         talking_photo_id: Optional[str] = None,
+        avatar_id: Optional[str] = None,
         voice_id: Optional[str] = None,
         background_color: str = "#FAFAFA",
         use_avatar_iv_model: Optional[bool] = None,
+        gender: Optional[str] = "female" # Default to female if not specified
     ) -> Dict[str, Any]:
         """
-        Generate an avatar video using a talking photo.
-        Docs: POST https://api.heygen.com/v2/video/generate
+        Generate an avatar video.
+        - If image_path is provided, uploads it as a talking photo first.
+        - If talking_photo_id provided, uses that.
+        - If avatar_id provided, uses that (avatar character).
         """
         if not script_text or not script_text.strip():
             raise ValueError("script_text is required")
@@ -81,31 +98,83 @@ class HeyGenService:
         # Refresh defaults from env (supports hot-reload on Windows)
         self.default_talking_photo_id = os.getenv("HEYGEN_TALKING_PHOTO_ID") or self.default_talking_photo_id
         self.default_voice_id = os.getenv("HEYGEN_VOICE_ID") or self.default_voice_id
+        
+        # 1. Handle Dynamic Image Upload if provided
+        if image_path and os.path.exists(image_path):
+            try:
+                print(f"[HeyGenService] Uploading dynamic avatar image: {image_path}")
+                upload_resp = self.upload_talking_photo(image_path)
+                dynamic_id = (upload_resp.get("data") or {}).get("talking_photo_id")
+                if dynamic_id:
+                    print(f"[HeyGenService] Dynamic upload successful. ID: {dynamic_id}")
+                    talking_photo_id = dynamic_id
+            except Exception as e:
+                print(f"[HeyGenService] Failed to upload dynamic image: {e}")
+                # Fallback to default if upload fails
 
-        # If no talking_photo_id set, try uploading the local Dora photo once.
-        talking_photo_id = talking_photo_id or self.default_talking_photo_id
-        if not talking_photo_id:
-            # Try known local locations
-            candidates = [
-                os.path.join(os.path.dirname(__file__), "..", "..", "..", "static", "avatars", "DORA-14.jpg"),
-                os.path.join(os.path.dirname(__file__), "..", "..", "..", "static", "DORA-14.jpg"),
-            ]
-            for p in candidates:
-                p = os.path.abspath(p)
-                if os.path.exists(p):
-                    uploaded = self.upload_talking_photo(p)
-                    talking_photo_id = (uploaded.get("data") or {}).get("talking_photo_id")
-                    # cache for future calls in-process
-                    if talking_photo_id:
-                        self.default_talking_photo_id = talking_photo_id
-                        break
+        if avatar_id:
+            character_payload = {
+                "type": "avatar",
+                "avatar_id": avatar_id,
+                "avatar_style": "normal"
+            }
+        else:
+            # If no talking_photo_id set, try uploading the local Dora photo once as fallback
+            talking_photo_id = talking_photo_id or self.default_talking_photo_id
             if not talking_photo_id:
+                # Try known local locations
+                # Service is in backend/api/services/heygen_service.py
+                # We need backend/static/avatars/DORA-14.jpg
+                
+                base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__))) # api, backend
+                
+                candidates = [
+                    os.path.join(base_dir, "static", "avatars", "DORA-14.jpg"),
+                    os.path.join(base_dir, "static", "DORA-14.jpg"),
+                    os.path.join(base_dir, "static", "avatars", "avatar_ebab264b.jpg"), # Known existing file
+                ]
+                
+                print(f"[HeyGenService] Attempting fallbacks. Candidates: {candidates}")
+                
+                for p in candidates:
+                    p = os.path.abspath(p)
+                    if os.path.exists(p):
+                        print(f"[HeyGenService] Found fallback avatar: {p}")
+                        try:
+                            uploaded = self.upload_talking_photo(p)
+                            talking_photo_id = (uploaded.get("data") or {}).get("talking_photo_id")
+                            # cache for future calls in-process
+                            if talking_photo_id:
+                                print(f"[HeyGenService] Fallback upload success: {talking_photo_id}")
+                                self.default_talking_photo_id = talking_photo_id
+                                break
+                        except Exception as e:
+                            print(f"[HeyGenService] Fallback upload failed for {p}: {e}")
+            
+            if not talking_photo_id:
+                # If still no ID, we can't generate
                 raise ValueError(
-                    "talking_photo_id is required (set HEYGEN_TALKING_PHOTO_ID or upload a photo avatar in HeyGen)"
+                    "talking_photo_id is required (provide image_path, set HEYGEN_TALKING_PHOTO_ID, or upload a photo avatar in HeyGen)"
                 )
+            
+            character_payload = {
+                "type": "talking_photo",
+                "talking_photo_id": talking_photo_id,
+            }
 
-        voice_id = voice_id or self.default_voice_id or self._pick_default_norwegian_voice_id()
-        if not voice_id:
+        # VOICE SELECTION logic
+        # 1. Use passed voice_id if any (override)
+        # 2. Use gender-specific default if available
+        # 3. Fallback to generic default
+        
+        target_voice_id = voice_id or self.default_voice_id
+        if not target_voice_id and gender:
+            target_voice_id = self.NORWEGIAN_VOICE_IDS.get(gender.lower())
+            
+        if not target_voice_id:
+             target_voice_id = self._pick_default_norwegian_voice_id() # Last resort fallback
+             
+        if not target_voice_id:
             raise ValueError("voice_id is required (set HEYGEN_VOICE_ID or pass in request)")
 
         url = f"{self.api_base_v2}/video/generate"
@@ -114,21 +183,19 @@ class HeyGenService:
         body: Dict[str, Any] = {
             "video_inputs": [
                 {
-                    "character": {
-                        "type": "talking_photo",
-                        "talking_photo_id": talking_photo_id,
-                    },
-                    "voice": {"type": "text", "input_text": script_text, "voice_id": voice_id},
+                    "character": character_payload,
+                    "voice": {"type": "text", "input_text": script_text, "voice_id": target_voice_id},
                     "background": {"type": "color", "value": background_color},
-                    "dimension": {"width": 1280, "height": 720},
+                    "dimension": {"width": 960, "height": 540},
                 }
             ]
         }
 
-        # Optional: newer motion engine for photo avatars (Avatar IV)
-        resolved_use_iv = self.use_avatar_iv_model if use_avatar_iv_model is None else bool(use_avatar_iv_model)
-        if resolved_use_iv:
-            body["use_avatar_iv_model"] = True
+        # SPEED & MOTION OPTIMIZATION:
+        # 1. Force Avatar IV for better facial expression and head movement
+        # 2. 540p resolution renders significantly faster than 720p or 1080p
+        # UPDATE: User requested faster generation. Avatar IV takes 7+ mins. Reverting to False (Avatar III) for speed.
+        body["use_avatar_iv_model"] = False
 
         resp = requests.post(url, headers=headers, json=body, timeout=180)
         resp.raise_for_status()
@@ -232,12 +299,16 @@ class HeyGenService:
         try:
             return self.generate_video(*args, **kwargs)
         except Exception as e:
+            print(f"[HeyGenService] CRITICAL ERROR in safe_generate_video: {e}")
+            import traceback
+            traceback.print_exc()
             # Return mock-like response
             return {
                 "id": f"vid_MOCK_{int(time.time())}",
-                "status": "processing",
+                "status": "error", # Explicitly mark as error so UI shows red
                 "provider": "heygen-mock",
-                "error": str(e)[:200],
+                "error": str(e), # Pass full error to UI
+                "detail": f"HeyGen Generation Error: {str(e)}" # Detail for frontend info
             }
 
     def list_voices(self) -> Dict[str, Any]:

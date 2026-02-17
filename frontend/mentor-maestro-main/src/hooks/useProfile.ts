@@ -49,17 +49,21 @@ export function useProfile() {
       if (!user?.id) return null;
 
       try {
-        const { data } = await axios.get(`${API_BASE}/user/${user.id}`);
+        const { data } = await axios.get(`${API_BASE}/user/${user.id}`, {
+          timeout: 5000, // 5 second timeout to avoid hanging
+        });
         return data as Profile;
       } catch (err: any) {
         if (err.response?.status === 404) {
           return null; // Profile doesn't exist yet
         }
-        throw err;
+        console.warn("Profile fetch failed:", err?.message);
+        return null; // Don't throw — show dashboard with defaults
       }
     },
     enabled: !!user?.id,
-    retry: 1,
+    retry: false, // Don't retry — profile either exists or we show defaults
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   });
 
   const updateProfile = useMutation({

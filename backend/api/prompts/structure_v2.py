@@ -8,7 +8,7 @@ Create a complete slide-by-slide outline based on the final approved webinar con
 The structure must follow the **Perfect Webinar** + **GOAT Webinars** psychology.
 
 **Target length:** 80–110 slides.
-**Language:** Norwegian (Bokmål).
+**Language:** {language}.
 
 ---
 ## INPUT
@@ -19,7 +19,7 @@ The structure must follow the **Perfect Webinar** + **GOAT Webinars** psychology
 ## INSTRUCTIONS
 You shall:
 - Follow the structure: **Intro → The One Thing → Secret 1–3 → Bridge → Pitch → Q&A**.
-- Maintain the **Norwegian market tone**: Professional, educational, trustworthy, and devoid of hype.
+- Maintain the **{market_tone}**: Professional, educational, trustworthy, and devoid of hype.
 - Specify **slide by slide** what each slide contains.
 - For each slide provide:
     - **Title**: Clear and educational.

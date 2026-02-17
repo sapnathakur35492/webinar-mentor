@@ -16,20 +16,16 @@ class Settings(BaseSettings):
     USE_MOCK_DB: bool = False
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
 
-    # HeyGen (Avatar Video Generation)
+    # Gemini (Video Generation via Veo 3.1)
+    GEMINI_API_KEY: str = ""
+    
+    # HeyGen (Video Generation)
     HEYGEN_API_KEY: str = ""
-    # For Photo Avatar / Talking Photo video generation
-    HEYGEN_TALKING_PHOTO_ID: str = ""
-    # Pick a Norwegian voice from HeyGen voices list (V2)
-    HEYGEN_VOICE_ID: str = ""
-    HEYGEN_USE_AVATAR_IV: bool = True
-    # Safety/perf: cap script length for faster generation
-    HEYGEN_MAX_CHARS: int = 900
-    # If true, block HeyGen final renders (prevents videos appearing in HeyGen Projects)
-    DISABLE_HEYGEN_VIDEO: bool = True
+    DEFAULT_VIDEO_PROVIDER: str = "heygen"  # "heygen" or "gemini"
 
     class Config:
         env_file = ".env"
         case_sensitive = True
+        extra = "ignore"
 
 settings = Settings()

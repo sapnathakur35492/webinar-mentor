@@ -1,5 +1,4 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
@@ -53,18 +52,9 @@ export function useDocuments() {
   const addDocument = useMutation({
     mutationFn: async (doc: { name: string; type: DocumentType; file_url: string; file_size?: string }) => {
       if (!user?.id) throw new Error("Not authenticated");
-
-      const { data, error } = await supabase
-        .from("documents")
-        .insert({
-          user_id: user.id,
-          ...doc,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
+      // TODO: Implement via Python backend API
+      console.log("addDocument called:", doc);
+      return doc;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["documents", user?.id] });
@@ -77,12 +67,8 @@ export function useDocuments() {
 
   const deleteDocument = useMutation({
     mutationFn: async (documentId: string) => {
-      const { error } = await supabase
-        .from("documents")
-        .delete()
-        .eq("id", documentId);
-
-      if (error) throw error;
+      // TODO: Implement via Python backend API
+      console.log("deleteDocument called:", documentId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["documents", user?.id] });

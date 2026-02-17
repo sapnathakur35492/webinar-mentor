@@ -85,7 +85,8 @@ export function useEmailSequences() {
       }
     },
     enabled: !!assetId,
-    refetchInterval: 5000,
+    refetchInterval: assetId ? 10000 : false,
+    retry: 1,
   });
 
   // Placeholder mutations

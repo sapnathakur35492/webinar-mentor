@@ -6,7 +6,7 @@ import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
-import { Video, RefreshCw, PlayCircle, FileText, CheckCircle2, Lock, ArrowRight, Headphones, Volume2 } from "lucide-react";
+import { Video, RefreshCw, PlayCircle, FileText, CheckCircle2, Lock, ArrowRight, Headphones, Volume2, ImageIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -19,8 +19,13 @@ export default function VideoPage() {
     const [videoResult, setVideoResult] = useState<any>(null);
     const [isPolling, setIsPolling] = useState(false);
     const [isPreviewing, setIsPreviewing] = useState(false);
+    const [gender, setGender] = useState<"female" | "male">("female");
     const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const audioRef = useRef<HTMLAudioElement | null>(null);
+
+    // Get the saved avatar image path from Setup
+    const avatarImagePath = localStorage.getItem("avatar_image_path") || "";
+    const avatarImageUrl = localStorage.getItem("avatar_image_url") || "";
 
     // Get approved concept
     const finalConcept = concepts.find(c => c.is_final) || concepts.find(c => c.status === "approved");
@@ -65,17 +70,23 @@ export default function VideoPage() {
         setIsGenerating(true);
         setVideoResult(null);
 
-        const toastId = toast.loading("Connecting to HeyGen...");
+        const toastId = toast.loading("Starting video generation...");
         try {
-            // Call our backend which forwards to HeyGen
-            const response = await api.generateVideo(assetId || undefined, script.slice(0, 900));
+            const selectedLanguage = localStorage.getItem("selected_language") || "Norwegian";
+            const response = await api.generateVideo(
+                assetId || undefined,
+                script.slice(0, 900),
+                (avatarImagePath || avatarImageUrl) || undefined,
+                selectedLanguage,
+                gender
+            );
 
             if (response.status === "success" && response.talk_id) {
                 const videoId = response.talk_id;
-                toast.success("Video generation started! This may take 1-3 minutes.", { id: toastId, duration: 3000 });
+                toast.success("Video generation started! This may take 2-5 minutes.", { id: toastId, duration: 3000 });
 
                 // Set initial result to show "processing" state
-                setVideoResult({ id: videoId, status: "processing", provider: "heygen" });
+                setVideoResult({ id: videoId, status: "processing", provider: "gemini" });
                 setIsGenerating(false);
 
                 // Start polling for video status
@@ -122,7 +133,7 @@ export default function VideoPage() {
             };
 
             await audio.play();
-            toast.success("Playing preview. No video has been created on HeyGen yet.", { id: toastId, duration: 4000 });
+            toast.success("Playing audio preview.", { id: toastId, duration: 4000 });
         } catch (e: any) {
             console.error("[Video] Preview error:", e);
             toast.error("Preview failed. Please try again.", { id: toastId });
@@ -153,9 +164,8 @@ export default function VideoPage() {
                 // If still "processing", keep polling
             } catch (e) {
                 console.error("[Video] Polling error:", e);
-                // Don't stop polling on transient network errors
             }
-        }, 3000); // Poll every 3 seconds
+        }, 5000); // Poll every 5 seconds (Gemini takes longer)
     };
 
     if (!finalConcept) {
@@ -181,7 +191,7 @@ export default function VideoPage() {
                             Video Studio
                         </h1>
                         <p className="text-muted-foreground mt-2 max-w-2xl">
-                            Turn your concept into a professional AI avatar video.
+                            Turn your concept into a professional AI video.
                         </p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -206,13 +216,62 @@ export default function VideoPage() {
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
+                            {/* Voice Selection */}
+                            <div className="flex items-center justify-between bg-muted/30 p-3 rounded-lg border border-border/50">
+                                <span className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                                    <Volume2 className="h-4 w-4" />
+                                    Avatar Voice
+                                </span>
+                                <div className="flex gap-2">
+                                    <Button
+                                        size="sm"
+                                        variant={gender === "female" ? "default" : "outline"}
+                                        onClick={() => setGender("female")}
+                                        className={cn("h-8 gap-1.5 transition-all", gender === "female" ? "bg-pink-600 hover:bg-pink-700 text-white" : "hover:text-pink-600 hover:border-pink-200")}
+                                    >
+                                        Female
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        variant={gender === "male" ? "default" : "outline"}
+                                        onClick={() => setGender("male")}
+                                        className={cn("h-8 gap-1.5 transition-all", gender === "male" ? "bg-blue-600 hover:bg-blue-700 text-white" : "hover:text-blue-600 hover:border-blue-200")}
+                                    >
+                                        Male
+                                    </Button>
+                                </div>
+                            </div>
+
                             <Textarea
                                 value={script}
                                 onChange={(e) => setScript(e.target.value)}
                                 className="min-h-[400px] font-mono text-sm leading-relaxed"
                                 placeholder="Enter your video script here..."
                             />
+
+                            {/* Avatar Image Info */}
+                            {avatarImageUrl && (
+                                <div className="flex items-center gap-3 p-3 rounded-lg border border-primary/20 bg-primary/5">
+                                    <img
+                                        src={`${import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:8000'}${avatarImageUrl}`}
+                                        alt="Avatar"
+                                        className="h-12 w-12 rounded-lg object-cover border border-primary/20"
+                                    />
+                                    <div className="flex-1">
+                                        <p className="text-sm font-medium text-primary/80 flex items-center gap-1.5">
+                                            <ImageIcon className="h-3.5 w-3.5" />
+                                            Avatar Image Attached
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">
+                                            This image will be used as the starting frame of your video.
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="flex gap-3 justify-end">
+                                {/* Instant Preview removed per user request */}
+                                {/* 
                                 <Button
                                     variant="outline"
                                     onClick={handleInstantPreview}
@@ -227,10 +286,11 @@ export default function VideoPage() {
                                     ) : (
                                         <>
                                             <Headphones className="h-4 w-4" />
-                                            Instant Preview (No-Dash)
+                                            Instant Preview
                                         </>
                                     )}
-                                </Button>
+                                </Button> 
+                                */}
                                 <Button
                                     onClick={handleGenerateVideo}
                                     disabled={isGenerating || isPolling || isPreviewing || !script.trim()}
@@ -239,7 +299,7 @@ export default function VideoPage() {
                                     {isGenerating ? (
                                         <>
                                             <RefreshCw className="h-4 w-4 animate-spin" />
-                                            Sending to HeyGen...
+                                            Starting Generation...
                                         </>
                                     ) : isPolling ? (
                                         <>
@@ -249,7 +309,7 @@ export default function VideoPage() {
                                     ) : (
                                         <>
                                             <Video className="h-4 w-4" />
-                                            Create Final AI Video
+                                            Create AI Video
                                         </>
                                     )}
                                 </Button>
@@ -279,7 +339,7 @@ export default function VideoPage() {
                                                 <div className="space-y-3">
                                                     <h3 className="font-bold text-2xl">Generating Your AI Video...</h3>
                                                     <p className="text-muted-foreground animate-pulse text-lg">
-                                                        HeyGen is creating your video with Dora. This usually takes 1-3 minutes.
+                                                        Creating your video. This usually takes 1-3 minutes.
                                                     </p>
                                                 </div>
                                                 <div className="w-full max-w-md bg-muted rounded-full h-3 overflow-hidden shadow-inner">
@@ -296,7 +356,7 @@ export default function VideoPage() {
                                                 </div>
                                                 <h3 className="font-semibold text-lg">Generation Failed</h3>
                                                 <p className="text-sm text-muted-foreground">
-                                                    Please try again. If the issue persists, check your HeyGen credits.
+                                                    {videoResult.detail || "Please try again. If the issue persists, check your Gemini API quota."}
                                                 </p>
                                                 <Button onClick={handleGenerateVideo} variant="outline" className="gap-2">
                                                     <RefreshCw className="h-4 w-4" /> Retry
@@ -308,7 +368,11 @@ export default function VideoPage() {
                                         {/* Video Player */}
                                         {(videoResult.result_url || videoResult.items?.[0]?.video_url) && (
                                             <video
-                                                src={videoResult.result_url || videoResult.items?.[0]?.video_url}
+                                                src={
+                                                    (videoResult.result_url?.startsWith("/static")
+                                                        ? `${import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:8000'}${videoResult.result_url}`
+                                                        : videoResult.result_url) || videoResult.items?.[0]?.video_url
+                                                }
                                                 controls
                                                 autoPlay={false}
                                                 muted={false}

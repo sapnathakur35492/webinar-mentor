@@ -253,10 +253,11 @@ async def get_asset(asset_id: str):
 class VideoGenerateRequest(BaseModel):
     asset_id: Optional[str] = None
     script_text: Optional[str] = None
-    source_url: Optional[str] = None
-    talking_photo_id: Optional[str] = None
-    voice_id: Optional[str] = None
-    fast_mode: Optional[bool] = True
+    image_path: Optional[str] = None
+    aspect_ratio: Optional[str] = "16:9"
+    duration_seconds: Optional[int] = 8
+    language_tone: Optional[str] = "Norwegian"
+    gender: Optional[str] = "female" # male or female
 
 
 class InstantAudioRequest(BaseModel):
@@ -269,8 +270,7 @@ class InstantAudioRequest(BaseModel):
 async def generate_instant_audio(request: InstantAudioRequest):
     """
     FAST path (seconds): returns MP3 audio for the given text.
-    This does NOT create anything on HeyGen.
-    Frontend can turn this into a quick preview video locally.
+    Frontend can turn this into a quick preview audio locally.
     """
     try:
         from api.services.tts_service import tts_service
@@ -287,11 +287,30 @@ async def generate_instant_audio(request: InstantAudioRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.post("/video/upload-avatar")
+async def upload_avatar_image(file: UploadFile = File(...)):
+    """
+    Upload an avatar image. This image will be used as the first frame
+    when generating videos with Gemini Veo.
+    """
+    try:
+        from api.services.gemini_video_service import gemini_video_service
+        file_bytes = await file.read()
+        result = gemini_video_service.save_avatar_image(file_bytes, file.filename)
+        return {"status": "success", **result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/video/generate")
 async def generate_video(request: VideoGenerateRequest):
     try:
+        from api.services.gemini_video_service import gemini_video_service
         from api.services.heygen_service import heygen_service
+        from core.settings import settings
+        
         text = request.script_text
+        provider = settings.DEFAULT_VIDEO_PROVIDER.lower()
         
         # If asset_id provided AND no script_text, attempt to fetch from structure
         if request.asset_id and not text:
@@ -299,38 +318,120 @@ async def generate_video(request: VideoGenerateRequest):
                 from api.models import WebinarAsset
                 asset = await WebinarAsset.get(request.asset_id)
                 if asset and asset.structure_content:
-                    # Cap script length for stability
                     text = asset.structure_content[:1200]
             except Exception:
-                # If asset_id is invalid / DB error, don't crash video generation.
                 pass
         
         if not text:
              raise HTTPException(status_code=400, detail="No script text provided or found in asset")
 
-        # Speed: cap script length (shorter = faster processing)
-        try:
-            from core.settings import settings
-            max_chars = int(getattr(settings, "HEYGEN_MAX_CHARS", 900))
-        except Exception:
-            max_chars = 900
-        if max_chars and len(text) > max_chars:
+        # Cap script length for stability
+        max_chars = 900
+        if len(text) > max_chars:
             text = text[:max_chars]
 
-        # HeyGen: generate avatar video (Photo Avatar / Talking Photo)
-        # Note: `source_url` is kept for backward compatibility but is not used by HeyGen.
-        result = heygen_service.safe_generate_video(
-            script_text=text,
-            talking_photo_id=request.talking_photo_id,
-            voice_id=request.voice_id,
-            # Fast mode: default to Avatar III for speed (less expressive than IV)
-            use_avatar_iv_model=False if request.fast_mode else None,
-        )
+        # Determine language tone
+        language = request.language_tone or "Norwegian"
+        
+        # If not explicitly provided, try to fetch from Mentor profile via Asset
+        if request.asset_id and not request.language_tone:
+             try:
+                 from api.models import WebinarAsset, Mentor
+                 asset = await WebinarAsset.get(request.asset_id)
+                 if asset and asset.mentor_id:
+                     mentor = await Mentor.find_one(Mentor.user_id == asset.mentor_id)
+                     if mentor and hasattr(mentor, "language_tone") and mentor.language_tone:
+                         language = mentor.language_tone
+             except Exception as e:
+                 print(f"Warning: Could not fetch mentor language: {e}")
+
+        # Provider-based generation
+        if provider == "heygen":
+            print(f"[WebinarRouter] Generating via HeyGen...")
+            
+            # Resolve image_path from URL to file system if needed
+            resolved_image_path = None
+            if request.image_path:
+                print(f"[WebinarRouter] Resolving image_path: {request.image_path}")
+                try:
+                    # Case 1: Already an absolute path
+                    if os.path.exists(request.image_path):
+                        resolved_image_path = request.image_path
+                        print(f"[WebinarRouter] Found as absolute path: {resolved_image_path}")
+                    # Case 2: URL like /static/avatars/...
+                    elif "/static/" in request.image_path:
+                        # Attempt to resolve relative to backend root
+                        import os
+                        
+                        # Handle full URLs (http://...) by splitting at /static/
+                        # This handles both "/static/foo.jpg" and "http://localhost:8000/static/foo.jpg"
+                        try:
+                            clean_part = request.image_path.split("/static/")[-1] 
+                        except:
+                            clean_part = request.image_path
+                            
+                        # 1. Try resolving relative to CWD (backend root)
+                        possible_path = os.path.abspath(os.path.join("static", clean_part))
+                        print(f"[WebinarRouter] Checking relative path 1: {possible_path}")
+                        if os.path.exists(possible_path):
+                            resolved_image_path = possible_path
+                        else:
+                            # Try relative to this file location (backend/api/routers) -> backend/static
+                            base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+                            possible_path_2 = os.path.join(base_dir, "static", clean_part)
+                            print(f"[WebinarRouter] Checking relative path 2: {possible_path_2}")
+                            if os.path.exists(possible_path_2):
+                                resolved_image_path = possible_path_2
+                            # Fallback: Check if file is just in static root
+                            else:
+                                filename = os.path.basename(clean_part)
+                                possible_path_3 = os.path.join(base_dir, "static", filename)
+                                print(f"[WebinarRouter] Checking relative path 3: {possible_path_3}")
+                                if os.path.exists(possible_path_3):
+                                    resolved_image_path = possible_path_3
+                                    
+                except Exception as e:
+                    print(f"Error resolving image path: {e}")
+            else:
+                print("[WebinarRouter] No image_path provided in request")
+            
+            if not resolved_image_path:
+                 print("[WebinarRouter] WARNING: Could not verify existence of avatar image on disk.")
+                 # FINAL FALLBACK: Use DORA-14.jpg if it exists, so generation doesn't fail
+                 try:
+                     base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+                     dora_path = os.path.join(base_dir, "static", "DORA-14.jpg")
+                     if os.path.exists(dora_path):
+                         print(f"[WebinarRouter] Using fallback DORA-14.jpg: {dora_path}")
+                         resolved_image_path = dora_path
+                 except: pass
+
+            result = heygen_service.safe_generate_video(
+                script_text=text,
+                image_path=resolved_image_path,
+                talking_photo_id=None, # will use default DORA-14 if no image_path
+                avatar_id=None,
+                voice_id=None,
+                use_avatar_iv_model=True,
+                gender=request.gender # Pass gender from request
+            )
+        else:
+            print(f"[WebinarRouter] Generating via Gemini Veo...")
+            result = gemini_video_service.safe_generate_video(
+                script_text=text,
+                image_path=request.image_path,
+                aspect_ratio=request.aspect_ratio or "16:9",
+                duration_seconds=request.duration_seconds or 8,
+                language_tone=language
+            )
         
         if not result:
-            raise HTTPException(status_code=500, detail="Failed to create video with HeyGen")
+            raise HTTPException(status_code=500, detail=f"Failed to start video generation with {provider}")
         
-        # SAVE video id to asset (keep existing field name for UI compatibility)
+        if result.get("status") == "error":
+            raise HTTPException(status_code=500, detail=result.get("error", "Video generation failed"))
+        
+        # SAVE operation id to asset (reuse video_talk_id field for UI compat)
         if request.asset_id:
             try:
                 from api.models import WebinarAsset
@@ -346,32 +447,41 @@ async def generate_video(request: VideoGenerateRequest):
             "data": result,
             "talk_id": result.get("id")
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/video/{talk_id}")
+
+@router.get("/video/{talk_id:path}")
 async def get_video_status(talk_id: str):
     try:
+        from api.services.gemini_video_service import gemini_video_service
         from api.services.heygen_service import heygen_service
+        
+        # Detect provider
+        if "/" in talk_id or "operation" in talk_id.lower():
+            service = gemini_video_service
+            provider_name = "Gemini"
+        else:
+            service = heygen_service
+            provider_name = "HeyGen"
+            
         try:
-            result = heygen_service.get_video_status(talk_id)
+            result = service.get_video_status(talk_id)
         except Exception as inner:
-            # Don't crash UI polling; return a stable error object
             return {"id": talk_id, "status": "error", "result_url": None, "detail": str(inner)[:200]}
+            
         if not result:
-             raise HTTPException(status_code=404, detail="Talk not found")
+             raise HTTPException(status_code=404, detail=f"Video operation not found ({provider_name})")
         
         # PERSIST: If completed, save the URL to the asset
-        # Never persist mock/sample runs.
         if (
             result.get("status") in ("done", "completed")
             and result.get("result_url")
-            and "mock" not in str(result.get("provider", "")).lower()
-            and "mock" not in str(talk_id).lower()
         ):
             try:
                 from api.models import WebinarAsset
-                # Find the asset that owns this talk
                 asset = await WebinarAsset.find_one(WebinarAsset.video_talk_id == talk_id)
                 if asset:
                     asset.video_url = result.get("result_url")
@@ -382,45 +492,6 @@ async def get_video_status(talk_id: str):
                 print(f"Error persisting video status: {e}")
 
         return result
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-# --- HeyGen helpers (optional, for setup) ---
-@router.get("/video/heygen/voices")
-async def heygen_list_voices():
-    """
-    Convenience endpoint to fetch HeyGen voices so you can pick a Norwegian `voice_id`.
-    """
-    try:
-        from api.services.heygen_service import heygen_service
-        return heygen_service.list_voices()
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/video/heygen/avatar-groups")
-async def heygen_list_avatar_groups():
-    """
-    Convenience endpoint to list avatar groups (for Photo Avatars).
-    Each "look id" can be used as `talking_photo_id`.
-    """
-    try:
-        from api.services.heygen_service import heygen_service
-        return heygen_service.list_avatar_groups()
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/video/heygen/avatar-groups/{group_id}/avatars")
-async def heygen_list_avatars_in_group(group_id: str):
-    """
-    Convenience endpoint to list avatars/looks inside a group.
-    Use the returned `id` as `talking_photo_id` for `/video/generate`.
-    """
-    try:
-        from api.services.heygen_service import heygen_service
-        return heygen_service.list_avatars_in_group(group_id)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

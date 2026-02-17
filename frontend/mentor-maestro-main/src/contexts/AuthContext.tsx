@@ -1,6 +1,4 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
-// import { User, Session } from "@supabase/supabase-js"; // REMOVE Supabase types
-// import { supabase } from "@/integrations/supabase/client"; // REMOVE Supabase client
 import axios from "axios";
 import { toast } from "sonner";
 
@@ -9,11 +7,11 @@ interface User {
   id: string;
   email: string;
   full_name?: string;
+  mentor_id?: string;
 }
 
 interface AuthContextType {
   user: User | null;
-  // session: Session | null; // We don't need Session object anymore, verify usage
   isLoading: boolean;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
@@ -33,14 +31,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Check for token in localStorage on mount
     const token = localStorage.getItem("token");
     if (token) {
-      // Ideally verify token with backend here, for now just decode or assume validity
-      // For simplicity in this step, we will verify by trying to fetch user profile if endpoint exists
-      // Or just persist the user state.
-
-      // Let's assume we store user details in localStorage too for simplicity or fetch them
       const storedUser = localStorage.getItem("user_data");
       if (storedUser) {
-        setUser(JSON.parse(storedUser));
+        try {
+          setUser(JSON.parse(storedUser));
+        } catch (e) {
+          // Corrupted data — clear it
+          localStorage.removeItem("token");
+          localStorage.removeItem("user_data");
+        }
       }
     }
     setIsLoading(false);
@@ -61,10 +60,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         password
       });
 
-      const { access_token } = loginResponse.data;
+      const { access_token, user_id, mentor_id } = loginResponse.data;
       localStorage.setItem("token", access_token);
 
-      const newUser = { id: response.data.id || "jwt-user", email: email, full_name: fullName };
+      const newUser: User = {
+        id: user_id || String(response.data.id),
+        email: email,
+        full_name: fullName,
+        mentor_id: mentor_id || undefined,
+      };
       localStorage.setItem("user_data", JSON.stringify(newUser));
       setUser(newUser);
 
@@ -82,10 +86,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         password
       });
 
-      const { access_token, user_id, full_name } = response.data;
+      const { access_token, user_id, full_name, mentor_id } = response.data;
       localStorage.setItem("token", access_token);
 
-      const loggedInUser = { id: user_id || "jwt-user", email, full_name };
+      const loggedInUser: User = {
+        id: user_id || "unknown",
+        email,
+        full_name,
+        mentor_id: mentor_id || undefined,
+      };
       localStorage.setItem("user_data", JSON.stringify(loggedInUser));
       setUser(loggedInUser);
 
@@ -99,13 +108,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user_data");
+    localStorage.removeItem("avatar_image_url");
+    localStorage.removeItem("avatar_image_path");
+    localStorage.removeItem("selected_language");
+    localStorage.removeItem("current_asset_id");
+    localStorage.removeItem("current_job_id");
     setUser(null);
-    // Local-friendly logout (avoid hard redirect to production)
     window.location.href = "/login";
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, signUp, signIn, signOut } as any}>
+    <AuthContext.Provider value={{ user, isLoading, signUp, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );

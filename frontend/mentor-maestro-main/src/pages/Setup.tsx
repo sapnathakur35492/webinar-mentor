@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { useProfile } from "@/hooks/useProfile";
 import { useDocuments } from "@/hooks/useDocuments";
@@ -25,7 +25,10 @@ import {
   Rocket,
   Video,
   X,
-  File as LucideFile
+  File as LucideFile,
+  ImageIcon,
+  Camera,
+  Languages
 } from "lucide-react";
 
 
@@ -54,7 +57,8 @@ export default function Setup() {
   const { documents } = useDocuments();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [step, setStep] = useState(1);
+  // Step 0: Avatar Image, Step 1: Profile, Step 2: Documents
+  const [step, setStep] = useState(0);
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSaving, setIsSaving] = useState(false);
@@ -63,6 +67,27 @@ export default function Setup() {
   const [isDragging, setIsDragging] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
+  // Avatar image state
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [avatarUploaded, setAvatarUploaded] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+
+  // Language selection state
+  const [selectedLanguage, setSelectedLanguage] = useState<"Norwegian" | "English">(
+    (localStorage.getItem("selected_language") as "Norwegian" | "English") || "Norwegian"
+  );
+
+  // Check if avatar was already uploaded in a previous session
+  useEffect(() => {
+    const savedUrl = localStorage.getItem("avatar_image_url");
+    if (savedUrl) {
+      const baseUrl = import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:8000';
+      setAvatarPreview(`${baseUrl}${savedUrl}`);
+      setAvatarUploaded(true);
+    }
+  }, []);
 
   // Determine initial step based on profile stage
   useEffect(() => {
@@ -84,15 +109,108 @@ export default function Setup() {
     }
   };
 
+  // ---- Avatar Image Upload Handlers ----
+  const handleAvatarSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      toast.error("Please upload a JPG, PNG, or WebP image.");
+      return;
+    }
+
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Image must be under 10MB.");
+      return;
+    }
+
+    setAvatarFile(file);
+    setAvatarUploaded(false);
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setAvatarPreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleAvatarDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) {
+      const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+      if (!validTypes.includes(file.type)) {
+        toast.error("Please upload a JPG, PNG, or WebP image.");
+        return;
+      }
+      setAvatarFile(file);
+      setAvatarUploaded(false);
+      const reader = new FileReader();
+      reader.onloadend = () => setAvatarPreview(reader.result as string);
+      reader.readAsDataURL(file);
+    } else {
+      toast.error("Please drop an image file (JPG, PNG, or WebP).");
+    }
+  };
+
+  const handleUploadAvatar = async () => {
+    if (!avatarFile) {
+      toast.error("Please select an image first.");
+      return;
+    }
+
+    setIsUploadingAvatar(true);
+    try {
+      const { api } = await import("@/lib/api");
+      const result = await api.uploadAvatarImage(avatarFile);
+
+      if (result.status === "success") {
+        // Save the server file path and URL in localStorage for use in Video page
+        localStorage.setItem("avatar_image_path", result.file_path);
+        localStorage.setItem("avatar_image_url", result.url);
+        setAvatarUploaded(true);
+        toast.success("Avatar image uploaded successfully! 🎉");
+      } else {
+        throw new Error("Upload failed");
+      }
+    } catch (e: any) {
+      console.error("Avatar upload error:", e);
+      toast.error(`Upload failed: ${e?.message || "Unknown error"}`);
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
+
+  const handleLanguageSelect = (lang: "Norwegian" | "English") => {
+    setSelectedLanguage(lang);
+    localStorage.setItem("selected_language", lang);
+  };
+
+  const handleAvatarContinue = async () => {
+    if (avatarFile && !avatarUploaded) {
+      await handleUploadAvatar();
+    }
+    // Save the language preference to localStorage
+    localStorage.setItem("selected_language", selectedLanguage);
+    setStep(1);
+    window.scrollTo(0, 0);
+  };
+
+  // ---- Profile Step Handlers ----
   const handleSaveStep1 = async () => {
     setIsSaving(true);
     setErrors({});
 
-    // Validate all fields are filled (basic validation for MVP)
     const newErrors: Record<string, string> = {};
     let hasError = false;
 
-    // SCROLL FIX: Don't scroll to top on error, stay where user is to fix it
     onboardingFields.forEach(field => {
       const val = getValue(field.key);
       if (!val || val.trim().length === 0) {
@@ -103,10 +221,7 @@ export default function Setup() {
 
     if (hasError) {
       setErrors(newErrors);
-      // No popup toast - just show "Required" text in red
       setIsSaving(false);
-
-      // FIX: Scroll to first error for better UX
       const firstError = document.querySelector(".required-error");
       if (firstError) {
         firstError.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -115,8 +230,10 @@ export default function Setup() {
     }
 
     try {
-      if (Object.keys(formData).length > 0) {
-        await updateProfile.mutateAsync(formData);
+      // Always include language_tone in the profile update
+      const profileData = { ...formData, language_tone: selectedLanguage };
+      if (Object.keys(profileData).length > 0) {
+        await updateProfile.mutateAsync(profileData);
         setFormData({});
       }
       setStep(2);
@@ -138,8 +255,6 @@ export default function Setup() {
     if (['srt', 'vtt'].includes(ext)) return { icon: LucideFile, color: 'text-green-400', bg: 'bg-green-500/20', label: 'Transcript' };
     return { icon: LucideFile, color: 'text-gray-400', bg: 'bg-gray-500/20', label: 'File' };
   };
-
-
 
   // AI Suggestions based on file types
   const getAIInsight = (files: File[]) => {
@@ -163,7 +278,6 @@ export default function Setup() {
     e.stopPropagation();
   };
 
-
   const handleDragEnter = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -183,9 +297,7 @@ export default function Setup() {
 
     const droppedFiles = Array.from(e.dataTransfer.files);
     if (droppedFiles.length > 0) {
-      // Add to existing files
       setSelectedFiles(prev => [...prev, ...droppedFiles]);
-      // Set first file for legacy compatibility
       if (!selectedFile) {
         setSelectedFile(droppedFiles[0]);
       }
@@ -203,7 +315,6 @@ export default function Setup() {
     const newFiles = Array.from(files);
     setSelectedFiles(prev => [...prev, ...newFiles]);
 
-    // Set first file for legacy compatibility
     if (!selectedFile) {
       setSelectedFile(newFiles[0]);
     }
@@ -227,7 +338,6 @@ export default function Setup() {
     try {
       // 1. Prepare Data
       const mentorId = profile?.user_id || user?.id || "test_mentor_id";
-      // IMPORTANT: formData only contains changed fields; build a complete onboarding context
       const onboardingPayload: Record<string, string> = {};
       onboardingFields.forEach((f) => {
         onboardingPayload[f.key] = getValue(f.key) || "";
@@ -245,38 +355,30 @@ export default function Setup() {
         mentorId,
         onboardingContext,
         "Hook Analysis Pending...",
-        // Send all selected files (PDF/video/transcripts). Backend supports multiple.
         selectedFiles.length > 0 ? selectedFiles : undefined,
         (progress) => setUploadProgress(progress)
       );
 
-      // Dismiss the initial loading toast
       toast.dismiss(loadingToastId);
 
-      // NEW: Handle async response with job_id
+      // Handle async response with job_id
       if (result.status === "accepted" && result.job_id) {
-        // Store job_id for status check
         localStorage.setItem("current_job_id", result.job_id);
 
-        // Show immediately success message
         toast.success("📄 PDF Uploaded! Processing in background...", {
           duration: 5000,
           description: "AI is analyzing your documents. This may take 1-2 minutes."
         });
 
-        // Poll for job status
         let pollCount = 0;
-        const maxPolls = 60; // Max 5 minutes (60 * 5 seconds)
+        const maxPolls = 60;
 
         const pollJobStatus = async () => {
           try {
             const jobStatus = await api.getJobStatus(result.job_id);
-
-            // Update progress message
             setUploadProgress(jobStatus.progress);
 
             if (jobStatus.status === "completed") {
-              // Job done! Store asset_id and navigate
               if (jobStatus.asset_id) {
                 localStorage.setItem("current_asset_id", jobStatus.asset_id);
               }
@@ -291,18 +393,16 @@ export default function Setup() {
               throw new Error(jobStatus.error || "Processing failed");
             }
 
-            // Still processing - show status update
-            if (pollCount % 3 === 0) { // Update toast every 15 seconds
+            if (pollCount % 3 === 0) {
               toast.info(`🔄 ${jobStatus.message}`, {
                 duration: 4000,
-                id: `poll-${result.job_id}` // Unique ID to update same toast
+                id: `poll-${result.job_id}`
               });
             }
 
-            // Continue polling
             pollCount++;
             if (pollCount < maxPolls) {
-              setTimeout(pollJobStatus, 5000); // Poll every 5 seconds
+              setTimeout(pollJobStatus, 5000);
             } else {
               throw new Error("Processing timeout - please refresh and check Concepts page");
             }
@@ -314,11 +414,9 @@ export default function Setup() {
           }
         };
 
-        // Start polling after 2 seconds
         setTimeout(pollJobStatus, 2000);
 
       } else if (result.status === "success" && result.asset_id) {
-        // Legacy: Handle old synchronous response (backward compatibility)
         localStorage.setItem("current_asset_id", result.asset_id);
         await updateStage.mutateAsync("concept_generation");
         toast.success("AI Context Uploaded! Generating concepts...");
@@ -332,7 +430,6 @@ export default function Setup() {
       toast.error(`Upload failed: ${error.message}`);
       setIsSaving(false);
     }
-    // Note: setIsSaving(false) is now handled in poll callback for async flow
   };
 
   const filledFields = onboardingFields.filter(f => {
@@ -356,24 +453,38 @@ export default function Setup() {
 
   return (
     <MainLayout>
-      {/* MOBILE RESPONSIVE WRAPPER: Added pb-24 for bottom bar clearance */}
+      {/* MOBILE RESPONSIVE WRAPPER */}
       <div className="max-w-5xl mx-auto space-y-8 pb-32">
-        {/* Modern Step Indicator - Dark Theme */}
+        {/* Modern Step Indicator - 3 Steps */}
         <div className="relative pt-4 px-4 sm:px-0">
           {/* Background Line */}
-          <div className="absolute top-[calc(50%-1px)] left-[120px] right-[120px] h-[2px] bg-white/10" />
+          <div className="absolute top-[calc(50%-1px)] left-[80px] right-[80px] h-[2px] bg-white/10" />
           {/* Progress Line */}
           <div
-            className="absolute top-[calc(50%-1px)] left-[120px] h-[2px] transition-all duration-500"
+            className="absolute top-[calc(50%-1px)] left-[80px] h-[2px] transition-all duration-500"
             style={{
-              width: step === 1 ? 'calc(50% - 120px)' : 'calc(100% - 240px)',
+              width: step === 0 ? '0%' : step === 1 ? 'calc(33% - 30px)' : 'calc(66% - 60px)',
               backgroundColor: '#3bba69'
             }}
           />
-          <div className="flex justify-between max-w-2xl mx-auto">
+          <div className="flex justify-between max-w-3xl mx-auto">
+            {/* Avatar Step */}
+            <div className={cn(
+              "flex flex-col items-center gap-2 px-3 py-2 transition-all duration-300",
+              step === 0 ? "scale-105" : ""
+            )}>
+              <div className={cn(
+                "h-12 w-12 rounded-full flex items-center justify-center transition-colors duration-300 border-2",
+                step >= 0 ? "bg-[#3bba69] border-[#3bba69] text-white" : "bg-transparent border-white/20 text-white/50"
+              )}>
+                <Camera className="h-5 w-5" />
+              </div>
+              <span className={cn("font-medium text-sm", step >= 0 ? "text-[#3bba69]" : "text-white/50")}>Avatar</span>
+            </div>
+
             {/* Profile Step */}
             <div className={cn(
-              "flex flex-col items-center gap-2 px-4 py-2 transition-all duration-300",
+              "flex flex-col items-center gap-2 px-3 py-2 transition-all duration-300",
               step === 1 ? "scale-105" : ""
             )}>
               <div className={cn(
@@ -387,7 +498,7 @@ export default function Setup() {
 
             {/* Documents Step */}
             <div className={cn(
-              "flex flex-col items-center gap-2 px-4 py-2 transition-all duration-300",
+              "flex flex-col items-center gap-2 px-3 py-2 transition-all duration-300",
               step === 2 ? "scale-105" : ""
             )}>
               <div className={cn(
@@ -400,7 +511,7 @@ export default function Setup() {
             </div>
 
             {/* AI Magic Step */}
-            <div className="flex flex-col items-center gap-2 px-4 py-2">
+            <div className="flex flex-col items-center gap-2 px-3 py-2">
               <div className="h-12 w-12 rounded-full bg-transparent border-2 border-white/20 text-white/50 flex items-center justify-center">
                 <Sparkles className="h-5 w-5" />
               </div>
@@ -409,7 +520,202 @@ export default function Setup() {
           </div>
         </div>
 
-        {/* Step 1: Onboarding Profile */}
+        {/* ===== STEP 0: Avatar Image Upload ===== */}
+        {step === 0 && (
+          <div className="space-y-6 max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 px-4 sm:px-0">
+            <div className="text-center">
+              <h1 className="text-2xl font-bold text-white tracking-tight">Upload Your Avatar Image</h1>
+              <p className="text-white/60 mt-2">
+                This image will be used as the first frame of your AI-generated video.
+                Upload a clear, well-lit photo for the best results.
+              </p>
+            </div>
+
+            {/* Avatar Upload Zone */}
+            <div
+              onDragOver={handleDragOver}
+              onDragEnter={handleDragEnter}
+              onDragLeave={handleDragLeave}
+              onDrop={handleAvatarDrop}
+              onClick={() => avatarInputRef.current?.click()}
+              className={cn(
+                "rounded-2xl border-2 border-dashed p-8 text-center transition-all duration-300 cursor-pointer relative overflow-hidden",
+                isDragging
+                  ? "border-[#3bba69] bg-[#3bba69]/10 scale-[1.02]"
+                  : avatarPreview
+                    ? "border-[#3bba69]/50 hover:border-[#3bba69]"
+                    : "border-white/20 hover:border-[#3bba69]/50"
+              )}
+              style={{ backgroundColor: isDragging ? 'rgba(59, 186, 105, 0.1)' : '#142721' }}
+            >
+              {avatarPreview ? (
+                <div className="flex flex-col items-center gap-6">
+                  <div className="relative group">
+                    <img
+                      src={avatarPreview}
+                      alt="Avatar preview"
+                      className="w-48 h-48 object-cover rounded-2xl border-4 border-[#3bba69]/30 shadow-xl shadow-[#3bba69]/10 transition-all group-hover:border-[#3bba69]/60"
+                    />
+                    <div className="absolute inset-0 bg-black/40 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <Camera className="h-8 w-8 text-white" />
+                    </div>
+                    {avatarUploaded && (
+                      <div className="absolute -top-2 -right-2 bg-[#3bba69] rounded-full p-1.5 shadow-lg">
+                        <CheckCircle className="h-5 w-5 text-white" />
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-white font-medium">
+                      {avatarUploaded ? "Avatar Uploaded ✓" : avatarFile?.name || "Image selected"}
+                    </p>
+                    <p className="text-white/50 text-sm mt-1">Click to change image</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center gap-5 py-8">
+                  <div className={cn(
+                    "h-24 w-24 rounded-full flex items-center justify-center transition-all duration-300",
+                    isDragging ? "bg-[#3bba69]/40 scale-110" : "bg-[#3bba69]/20"
+                  )}>
+                    <ImageIcon className={cn(
+                      "h-12 w-12 transition-all duration-300",
+                      isDragging ? "text-white" : "text-[#3bba69]"
+                    )} />
+                  </div>
+                  <div>
+                    <p className="text-lg font-semibold text-white">
+                      {isDragging ? "Drop your image here!" : "Drag & Drop or Click to Upload"}
+                    </p>
+                    <p className="text-white/50 mt-2 text-sm">
+                      Supports JPG, PNG, WebP • Max 10MB
+                    </p>
+                  </div>
+                  <div className="flex gap-3 mt-2">
+                    <span className="text-xs px-3 py-1 rounded-full bg-white/5 text-white/60 border border-white/10">📸 Photo</span>
+                    <span className="text-xs px-3 py-1 rounded-full bg-white/5 text-white/60 border border-white/10">🎨 Avatar</span>
+                    <span className="text-xs px-3 py-1 rounded-full bg-white/5 text-white/60 border border-white/10">👤 Headshot</span>
+                  </div>
+                </div>
+              )}
+
+              <input
+                ref={avatarInputRef}
+                type="file"
+                accept="image/jpeg,image/jpg,image/png,image/webp"
+                className="hidden"
+                onChange={handleAvatarSelect}
+              />
+            </div>
+
+            {/* Language Selector */}
+            <div className="space-y-3 pt-2">
+              <h3 className="text-white font-medium text-sm flex items-center gap-2 px-1">
+                <Languages className="h-4 w-4 text-[#3bba69]" />
+                Video Language
+              </h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div
+                  onClick={() => handleLanguageSelect("Norwegian")}
+                  className={cn(
+                    "cursor-pointer rounded-xl border p-4 transition-all hover:border-[#3bba69]/50 relative overflow-hidden",
+                    selectedLanguage === "Norwegian"
+                      ? "bg-[#3bba69]/20 border-[#3bba69]"
+                      : "bg-white/5 border-white/10 hover:bg-white/10"
+                  )}
+                >
+                  {selectedLanguage === "Norwegian" && (
+                    <div className="absolute top-2 right-2">
+                      <CheckCircle className="h-4 w-4 text-[#3bba69]" />
+                    </div>
+                  )}
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">🇳🇴</span>
+                    <div>
+                      <p className="font-semibold text-white text-sm">Norwegian</p>
+                      <p className="text-xs text-white/50">Norsk (Bokmål)</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div
+                  onClick={() => handleLanguageSelect("English")}
+                  className={cn(
+                    "cursor-pointer rounded-xl border p-4 transition-all hover:border-[#3bba69]/50 relative overflow-hidden",
+                    selectedLanguage === "English"
+                      ? "bg-[#3bba69]/20 border-[#3bba69]"
+                      : "bg-white/5 border-white/10 hover:bg-white/10"
+                  )}
+                >
+                  {selectedLanguage === "English" && (
+                    <div className="absolute top-2 right-2">
+                      <CheckCircle className="h-4 w-4 text-[#3bba69]" />
+                    </div>
+                  )}
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">🇬🇧</span>
+                    <div>
+                      <p className="font-semibold text-white text-sm">English</p>
+                      <p className="text-xs text-white/50">International</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Tips */}
+            <div className="rounded-lg p-4 border border-[#3bba69]/20" style={{ backgroundColor: 'rgba(59, 186, 105, 0.1)' }}>
+              <div className="flex items-start gap-3">
+                <div className="bg-[#3bba69]/20 p-2 rounded-lg shrink-0">
+                  <Lightbulb className="h-4 w-4 text-[#3bba69]" />
+                </div>
+                <div>
+                  <h4 className="font-medium text-[#3bba69] text-sm">Tips for Best Results</h4>
+                  <ul className="text-sm text-white/60 mt-1 space-y-1">
+                    <li>• Use a clear, high-resolution photo with good lighting</li>
+                    <li>• Face the camera directly for the best video animation</li>
+                    <li>• A neutral background works best for professional videos</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex justify-between items-center pt-4">
+              <div /> {/* Spacer */}
+              <div className="flex gap-3">
+                <Button
+                  variant="ghost"
+                  onClick={() => { setStep(1); window.scrollTo(0, 0); }}
+                  className="text-white/60 hover:text-white hover:bg-white/5"
+                >
+                  Skip for Now
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+                <Button
+                  onClick={handleAvatarContinue}
+                  disabled={isUploadingAvatar}
+                  className="h-12 px-8 text-white font-semibold rounded-full transition-all hover:scale-105"
+                  style={{ background: 'linear-gradient(135deg, #3bba69, #279b65)' }}
+                >
+                  {isUploadingAvatar ? (
+                    <span className="flex items-center gap-2">
+                      <Upload className="h-4 w-4 animate-bounce" />
+                      Uploading...
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-2">
+                      {avatarPreview ? "Continue to Profile" : "Continue without Avatar"}
+                      <ArrowRight className="h-5 w-5" />
+                    </span>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ===== STEP 1: Onboarding Profile ===== */}
         {step === 1 && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 px-4 sm:px-0">
             <div className="text-center max-w-2xl mx-auto">
@@ -419,10 +725,8 @@ export default function Setup() {
               </p>
             </div>
 
-            {/* Progress Card - Dark Theme */}
+            {/* Progress Card */}
             <div className="rounded-xl p-5 border border-white/10" style={{ backgroundColor: '#142721' }}>
-
-
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium text-white">Profile Strength</span>
@@ -445,7 +749,7 @@ export default function Setup() {
               </div>
             </div>
 
-            {/* Form - Dark Theme */}
+            {/* Form */}
             <div className="grid grid-cols-1 gap-4">
               {onboardingFields.map((field) => {
                 const Icon = field.icon;
@@ -509,7 +813,15 @@ export default function Setup() {
             </div>
 
             {/* Actions */}
-            <div className="flex justify-end pt-4">
+            <div className="flex justify-between pt-4">
+              <Button
+                variant="ghost"
+                onClick={() => { setStep(0); window.scrollTo(0, 0); }}
+                className="text-white/60 hover:text-white hover:bg-white/5"
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to Avatar
+              </Button>
               <Button
                 onClick={handleSaveStep1}
                 disabled={isSaving}
@@ -524,7 +836,7 @@ export default function Setup() {
           </div>
         )}
 
-        {/* Step 2: Documents */}
+        {/* ===== STEP 2: Documents ===== */}
         {step === 2 && (
           <div className="space-y-6 max-w-3xl mx-auto animate-in fade-in slide-in-from-right-8 duration-500 px-4 sm:px-0">
             <div className="text-center">
@@ -534,7 +846,7 @@ export default function Setup() {
               </p>
             </div>
 
-            {/* Upload Zone - Drag and Drop with Visual Feedback */}
+            {/* Upload Zone */}
             <div
               onDragOver={handleDragOver}
               onDragEnter={handleDragEnter}
@@ -590,7 +902,7 @@ export default function Setup() {
             </div>
 
 
-            {/* AI Insight Box - Dynamic Suggestion */}
+            {/* AI Insight Box */}
             {selectedFiles.length > 0 && (
               <div className="rounded-xl p-4 border border-[#3bba69]/30 bg-[#3bba69]/5 animate-in zoom-in-95 duration-500">
                 <div className="flex items-start gap-4">
@@ -610,8 +922,7 @@ export default function Setup() {
               </div>
             )}
 
-            {/* Selected Files Preview (New files to be uploaded) */}
-
+            {/* Selected Files Preview */}
             {selectedFiles.length > 0 && (
               <div className="space-y-2">
                 <h3 className="font-medium text-white text-sm px-1">Files to Upload ({selectedFiles.length})</h3>
@@ -644,7 +955,7 @@ export default function Setup() {
               </div>
             )}
 
-            {/* Previously Uploaded Files List - Dark Theme */}
+            {/* Previously Uploaded Files */}
             {documents.length > 0 && (
               <div className="space-y-2">
                 <h3 className="font-medium text-white text-sm px-1">Previously Uploaded</h3>
@@ -672,7 +983,7 @@ export default function Setup() {
             )}
 
 
-            {/* Pro Tip - Dark Theme */}
+            {/* Pro Tip */}
             <div className="rounded-lg p-4 border border-[#3bba69]/20" style={{ backgroundColor: 'rgba(59, 186, 105, 0.1)' }}>
               <div className="flex items-start gap-3">
                 <div className="bg-[#3bba69]/20 p-2 rounded-lg shrink-0">
@@ -691,7 +1002,7 @@ export default function Setup() {
             <div className="flex justify-between items-center pt-4">
               <Button
                 variant="ghost"
-                onClick={() => setStep(1)}
+                onClick={() => { setStep(1); window.scrollTo(0, 0); }}
                 className="text-white/60 hover:text-white hover:bg-white/5"
               >
                 <ArrowLeft className="mr-2 h-4 w-4" />
@@ -726,4 +1037,3 @@ export default function Setup() {
     </MainLayout>
   );
 }
-
