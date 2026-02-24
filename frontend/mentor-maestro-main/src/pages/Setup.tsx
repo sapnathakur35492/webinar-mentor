@@ -66,6 +66,9 @@ export default function Setup() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [conceptConsiderations, setConceptConsiderations] = useState<string>(
+    localStorage.getItem("concept_considerations") || ""
+  );
 
   // Avatar image states
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -344,6 +347,20 @@ export default function Setup() {
       });
       const onboardingContext = JSON.stringify(onboardingPayload, null, 2);
 
+      // Append extra considerations if provided
+      const finalContext = conceptConsiderations.trim()
+        ? `${onboardingContext}
+
+--- SPECIAL CONSIDERATIONS FOR CONCEPT GENERATION ---
+${conceptConsiderations.trim()}
+-----------------------------------------------------`
+        : onboardingContext;
+
+      // Save considerations to localStorage
+      if (conceptConsiderations.trim()) {
+        localStorage.setItem("concept_considerations", conceptConsiderations);
+      }
+
       // 2. Call Python Backend - Now returns immediately with job_id
       const loadingToastId = toast.info("Uploading context to AI Brain...", {
         duration: Infinity,
@@ -353,7 +370,7 @@ export default function Setup() {
 
       const result = await api.uploadContext(
         mentorId,
-        onboardingContext,
+        finalContext,
         "Hook Analysis Pending...",
         selectedFiles.length > 0 ? selectedFiles : undefined,
         (progress) => setUploadProgress(progress)
@@ -844,6 +861,41 @@ export default function Setup() {
               <p className="text-white/60 mt-2">
                 Add documents to help Change 2.0 understand your business better.
               </p>
+            </div>
+
+            {/* ━━━ SPECIAL CONSIDERATIONS FIELD ━━━ */}
+            <div
+              className="rounded-xl p-5 border border-[#3bba69]/30 space-y-3"
+              style={{ backgroundColor: '#142721' }}
+            >
+              <div className="flex items-start gap-3">
+                <div className="bg-[#3bba69]/20 p-2 rounded-lg shrink-0 mt-0.5">
+                  <Sparkles className="h-4 w-4 text-[#3bba69]" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-white font-semibold text-sm">
+                    Special Instructions for the AI
+                  </h3>
+                  <p className="text-white/50 text-xs mt-0.5">
+                    Anything specific the AI should consider when creating your 3 webinar concepts — e.g. avoid certain topics, focus on a specific audience segment, use a certain tone, include a specific product.
+                  </p>
+                </div>
+              </div>
+              <Textarea
+                value={conceptConsiderations}
+                onChange={(e) => {
+                  setConceptConsiderations(e.target.value);
+                  localStorage.setItem("concept_considerations", e.target.value);
+                }}
+                placeholder={`Examples:\n• Focus on entrepreneurs struggling with time management\n• Avoid mentioning competitors by name\n• Tone should be motivational and bold\n• Must include a section about our signature 5-step framework`}
+                className="min-h-[120px] bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-[#3bba69] focus:ring-1 focus:ring-[#3bba69] resize-none text-sm leading-relaxed"
+              />
+              {conceptConsiderations.trim() && (
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="h-3.5 w-3.5 text-[#3bba69]" />
+                  <span className="text-[#3bba69] text-xs">AI will factor this in when generating your 3 concepts</span>
+                </div>
+              )}
             </div>
 
             {/* Upload Zone */}
