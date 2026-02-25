@@ -438,14 +438,30 @@ async def generate_instant_audio(request: InstantAudioRequest):
 @router.post("/video/upload-avatar")
 async def upload_avatar_image(file: UploadFile = File(...)):
     """
-    Upload an avatar image. This image will be used as the first frame
-    when generating videos with Gemini Veo.
+    Upload an avatar image. Saves locally AND to S3.
+    Returns file_path (local) and s3_url (cloud).
     """
     try:
         from api.services.gemini_video_service import gemini_video_service
         file_bytes = await file.read()
+        
+        # 1. Save locally (for Gemini video generation)
         result = gemini_video_service.save_avatar_image(file_bytes, file.filename)
-        return {"status": "success", **result}
+        
+        # 2. Upload to S3 (for fast access & persistence on live server)
+        s3_url = ""
+        try:
+            from core.s3 import s3_service
+            s3_url = await s3_service.upload_file(
+                file_content=file_bytes,
+                file_name=f"avatars/{result['filename']}",
+                content_type=file.content_type or "image/jpeg"
+            )
+            print(f"[Avatar] Uploaded to S3: {s3_url}")
+        except Exception as s3_err:
+            print(f"[Avatar] WARNING: S3 upload failed (local save OK): {s3_err}")
+        
+        return {"status": "success", "s3_url": s3_url, **result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
