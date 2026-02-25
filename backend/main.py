@@ -57,8 +57,9 @@ def health_check():
     return {"status": "ok", "service": "WebinarAgent.ai"}
 
 # Register routers
-from api.routers import auth, mentors, approvals
+from api.routers import auth, mentors, webinar, approvals, documents
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
 app.include_router(mentors.router, prefix="/api", tags=["Mentors"]) # Router already has /mentors prefix
 app.include_router(webinar.router, prefix="/api/webinar", tags=["Webinar AI"])
 app.include_router(approvals.router, prefix="/api/approvals", tags=["Approvals"])
+app.include_router(documents.router, prefix="/api/documents", tags=["Documents"])

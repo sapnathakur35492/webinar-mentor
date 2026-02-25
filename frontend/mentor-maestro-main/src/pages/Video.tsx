@@ -253,7 +253,7 @@ export default function VideoPage() {
                             {avatarImageUrl && (
                                 <div className="flex items-center gap-3 p-3 rounded-lg border border-primary/20 bg-primary/5">
                                     <img
-                                        src={`${import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:8000'}${avatarImageUrl}`}
+                                        src={`${import.meta.env.VITE_BASE_URL}${avatarImageUrl}`}
                                         alt="Avatar"
                                         className="h-12 w-12 rounded-lg object-cover border border-primary/20"
                                     />
@@ -370,7 +370,7 @@ export default function VideoPage() {
                                             <video
                                                 src={
                                                     (videoResult.result_url?.startsWith("/static")
-                                                        ? `${import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:8000'}${videoResult.result_url}`
+                                                        ? `${import.meta.env.VITE_BASE_URL}${videoResult.result_url}`
                                                         : videoResult.result_url) || videoResult.items?.[0]?.video_url
                                                 }
                                                 controls

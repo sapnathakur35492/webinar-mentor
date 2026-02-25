@@ -342,6 +342,11 @@ class WebinarAIService:
             asset.concepts_improved = improved_concepts
         await asset.save()
         
+        # --- S3 upload deferred: concepts are NOT saved to S3 or Webinar_Concept here ---
+        # They will be uploaded to S3 + saved to Webinar_Concept collection ONLY
+        # when the mentor approves a concept via /assets/{asset_id}/select-concept.
+        print(f"[WebinarAI] Concepts saved to WebinarAsset (S3 upload deferred to approval)")
+        
         final_count = len(improved_concepts) if improved_concepts else len(parsed_concepts)
         print(f"[WebinarAI] Asset saved with {final_count} AI concepts")
         

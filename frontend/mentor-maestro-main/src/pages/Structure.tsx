@@ -522,7 +522,7 @@ export default function Structure() {
                       <div className="relative rounded-xl overflow-hidden border-2 border-[#3bba69] bg-[#3bba69]/5 shadow-md p-1">
                         <div className="aspect-square rounded-lg overflow-hidden bg-gray-200">
                           <img
-                            src="http://localhost:8000/static/avatars/DORA-14.jpg"
+                            src={`${import.meta.env.VITE_BASE_URL}/static/avatars/DORA-14.jpg`}
                             alt="DORA-14"
                             className="w-full h-full object-cover"
                             onError={(e) => {
@@ -594,7 +594,7 @@ export default function Structure() {
                           src={videoResult?.result_url || videoResult?.items?.[0]?.video_url || persistedVideoUrl}
                           controls
                           className="w-full h-full object-contain"
-                          poster="http://localhost:8000/static/avatars/DORA-14.jpg"
+                          poster={`${import.meta.env.VITE_BASE_URL}/static/avatars/DORA-14.jpg`}
                         />
                       </div>
                       <div className="flex justify-end p-2">

@@ -165,8 +165,11 @@ class SelectConceptRequest(BaseModel):
 
 @router.post("/assets/{asset_id}/select-concept")
 async def select_concept(asset_id: str, request: SelectConceptRequest):
+    """Mentor selects a concept: save to S3 + Webinar_Concept with Status=Pending(0). Admin will approve later."""
     try:
-        from api.models import WebinarAsset
+        from api.models import WebinarAsset, WebinarConcept, ConceptStatus
+        import json as _json
+        
         asset = await WebinarAsset.get(asset_id)
         if not asset:
             raise HTTPException(status_code=404, detail="Asset not found")
@@ -176,10 +179,113 @@ async def select_concept(asset_id: str, request: SelectConceptRequest):
         if not source_list or request.concept_index >= len(source_list):
             raise HTTPException(status_code=400, detail="Invalid concept index")
             
-        asset.selected_concept = source_list[request.concept_index]
+        # 1. Set selected concept on the asset (status = pending, waiting for admin)
+        selected = source_list[request.concept_index]
+        asset.selected_concept = selected
+        asset.concept_approval_status = "pending"
         await asset.save()
+        print(f"[SelectConcept] Concept {request.concept_index + 1} selected for asset {asset_id}")
         
-        return {"status": "success", "selected_concept": asset.selected_concept}
+        # 2. Upload concept JSON to S3
+        s3_url = ""
+        concept_dict = selected.dict() if hasattr(selected, 'dict') else dict(selected)
+        concept_json = _json.dumps(concept_dict, indent=2, ensure_ascii=False)
+        file_name = f"concept_{asset.mentor_id}_{request.concept_index + 1}.json"
+        
+        try:
+            from core.s3 import s3_service
+            s3_url = await s3_service.upload_file(
+                file_content=concept_json.encode("utf-8"),
+                file_name=file_name,
+                content_type="application/json"
+            )
+            print(f"[SelectConcept] Concept uploaded to S3: {s3_url}")
+        except Exception as s3_err:
+            print(f"[SelectConcept] WARNING: S3 upload failed: {s3_err}")
+        
+        # 3. Save to Webinar_Concept collection with Status=Pending(0)
+        try:
+            wc = WebinarConcept(
+                MentorId=asset.mentor_id,
+                ConceptNumber=request.concept_index + 1,
+                ConceptTitle=concept_dict.get("title", ""),
+                ConceptData=concept_dict,
+                Status=ConceptStatus.Pending,  # 0 = Pending (default)
+                FileName=file_name,
+                FileType="application/json",
+                S3Url=s3_url,
+            )
+            await wc.insert()
+            print(f"[SelectConcept] Webinar_Concept record created: {wc.id}, Status=Pending(0)")
+        except Exception as db_err:
+            print(f"[SelectConcept] WARNING: DB save failed: {db_err}")
+        
+        return {
+            "status": "success", 
+            "selected_concept": asset.selected_concept,
+            "s3_url": s3_url,
+            "concept_status": ConceptStatus.Pending,  # 0 = Pending
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# --- Admin Approval Endpoint ---
+class AdminApproveRequest(BaseModel):
+    action: str = "approve"  # "approve" or "reject"
+    admin_notes: Optional[str] = None
+
+@router.post("/assets/concepts/{concept_id}/admin-approve")
+async def admin_approve_concept(concept_id: str, request: AdminApproveRequest):
+    """
+    Admin approves or rejects a concept.
+    Status: Pending(0) -> Approved(1) or Rejected(2)
+    """
+    try:
+        from api.models import WebinarConcept, ConceptStatus, WebinarAsset
+        from bson import ObjectId
+        
+        wc = await WebinarConcept.get(concept_id)
+        if not wc:
+            raise HTTPException(status_code=404, detail="Concept not found")
+        
+        if request.action == "approve":
+            wc.Status = ConceptStatus.Approved  # 1
+            new_status = "approved"
+            print(f"[AdminApprove] Concept {concept_id} APPROVED by admin")
+        elif request.action == "reject":
+            wc.Status = ConceptStatus.Rejected  # 2
+            new_status = "rejected"
+            print(f"[AdminApprove] Concept {concept_id} REJECTED by admin")
+        else:
+            raise HTTPException(status_code=400, detail="Invalid action. Use 'approve' or 'reject'")
+        
+        await wc.save()
+        
+        # Also update the WebinarAsset's concept_approval_status
+        try:
+            assets = await WebinarAsset.find(
+                WebinarAsset.mentor_id == wc.MentorId
+            ).to_list()
+            for asset in assets:
+                asset.concept_approval_status = new_status
+                await asset.save()
+                print(f"[AdminApprove] Updated asset {asset.id} concept_approval_status={new_status}")
+        except Exception as asset_err:
+            print(f"[AdminApprove] WARNING: Asset update failed: {asset_err}")
+        
+        return {
+            "status": "success",
+            "concept_id": str(wc.id),
+            "concept_title": wc.ConceptTitle,
+            "concept_status": wc.Status,  # 0=Pending, 1=Approved, 2=Rejected
+            "s3_url": wc.S3Url,
+            "action": request.action,
+        }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -450,6 +556,41 @@ async def generate_video(request: VideoGenerateRequest):
                     await asset.save()
             except: pass
             
+        # --- Save script to S3 and create Webinar_Video record ---
+        try:
+            from core.s3 import s3_service
+            from api.models import WebinarVideo
+            
+            mentor_id = ""
+            if request.asset_id:
+                try:
+                    asset_for_mentor = await WebinarAsset.get(request.asset_id)
+                    if asset_for_mentor:
+                        mentor_id = asset_for_mentor.mentor_id
+                except: pass
+            
+            talk_id = result.get("id", "")
+            script_file_name = f"video_script_{talk_id}.txt"
+            script_s3_url = await s3_service.upload_file(
+                file_content=text.encode("utf-8"),
+                file_name=script_file_name,
+                content_type="text/plain"
+            )
+            
+            wv = WebinarVideo(
+                MentorId=mentor_id,
+                TalkId=talk_id,
+                Script=text,
+                ScriptS3Url=script_s3_url,
+                VideoS3Url="",
+                VideoSourceUrl="",
+                Status="pending",
+            )
+            await wv.insert()
+            print(f"[WebinarRouter] Script saved to S3: {script_s3_url}, Webinar_Video record: {wv.id}")
+        except Exception as s3_err:
+            print(f"[WebinarRouter] WARNING: S3/DB save for video script failed: {s3_err}")
+
         return {
             "status": "success", 
             "data": result,
@@ -483,21 +624,66 @@ async def get_video_status(talk_id: str):
         if not result:
              raise HTTPException(status_code=404, detail=f"Video operation not found ({provider_name})")
         
-        # PERSIST: If completed, save the URL to the asset
+        # PERSIST: If completed, save the URL to the asset AND S3 + Webinar_Video
         if (
             result.get("status") in ("done", "completed")
             and result.get("result_url")
         ):
+            video_source_url = result.get("result_url")
+            
+            # Save to WebinarAsset (existing logic)
             try:
                 from api.models import WebinarAsset
                 asset = await WebinarAsset.find_one(WebinarAsset.video_talk_id == talk_id)
                 if asset:
-                    asset.video_url = result.get("result_url")
+                    asset.video_url = video_source_url
                     asset.video_status = "completed"
                     await asset.save()
                     print(f"Persisted video URL for asset {asset.id}")
             except Exception as e: 
                 print(f"Error persisting video status: {e}")
+            
+            # --- Upload video to S3 and update Webinar_Video record ---
+            try:
+                from core.s3 import s3_service
+                from api.models import WebinarVideo
+                import requests as req
+                
+                # Download the video from HeyGen/Gemini URL
+                video_resp = req.get(video_source_url, timeout=120)
+                if video_resp.status_code == 200:
+                    video_file_name = f"webinar_video_{talk_id}.mp4"
+                    video_s3_url = await s3_service.upload_file(
+                        file_content=video_resp.content,
+                        file_name=video_file_name,
+                        content_type="video/mp4"
+                    )
+                    
+                    # Update existing Webinar_Video record
+                    wv = await WebinarVideo.find_one(WebinarVideo.TalkId == talk_id)
+                    if wv:
+                        wv.VideoS3Url = video_s3_url
+                        wv.VideoSourceUrl = video_source_url
+                        wv.Status = "completed"
+                        await wv.save()
+                        print(f"[WebinarRouter] Video saved to S3: {video_s3_url}, Webinar_Video updated: {wv.id}")
+                    else:
+                        # Fallback: create a new record if not found
+                        wv_new = WebinarVideo(
+                            MentorId="",
+                            TalkId=talk_id,
+                            Script="",
+                            ScriptS3Url="",
+                            VideoS3Url=video_s3_url,
+                            VideoSourceUrl=video_source_url,
+                            Status="completed",
+                        )
+                        await wv_new.insert()
+                        print(f"[WebinarRouter] Video saved to S3 (new record): {video_s3_url}")
+                else:
+                    print(f"[WebinarRouter] WARNING: Failed to download video from {video_source_url}: HTTP {video_resp.status_code}")
+            except Exception as s3_err:
+                print(f"[WebinarRouter] WARNING: S3 video upload failed: {s3_err}")
 
         return result
     except Exception as e:

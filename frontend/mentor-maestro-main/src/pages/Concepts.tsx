@@ -120,7 +120,6 @@ export default function Concepts() {
     console.log("[Concepts] handleGenerate called, assetId:", assetId);
 
     if (!assetId) {
-      toast.error("No active session. Please start from Setup.");
       navigate("/setup");
       return;
     }

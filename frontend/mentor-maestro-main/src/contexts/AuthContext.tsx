@@ -20,8 +20,9 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Use environment variable for API base URL - change in .env for production
-const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'https://devwebinar.change20.no/api'}/auth`;
+// Use environment variable for API base URL - forced to 8000 for local debugging
+const API_BASE = "http://localhost:8000/api/auth";
+console.log("FORCED AUTH API_BASE:", API_BASE);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -47,15 +48,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp = async (email: string, password: string, fullName: string) => {
     try {
-      const response = await axios.post(`${API_BASE}/register`, {
+      const registerUrl = `${API_BASE}/register`;
+      console.log("DEBUG SIGNUP: Calling URL:", registerUrl);
+      console.log("DEBUG SIGNUP: Payload:", { email, password: "***", name: fullName });
+
+      const response = await axios.post(registerUrl, {
         email,
         password,
         name: fullName, // Backend expects 'name'
       });
-      console.log("Registration success", response.data);
+      console.log("DEBUG SIGNUP: Registration success", response.data);
 
       // Auto-login after successful registration
-      const loginResponse = await axios.post(`${API_BASE}/login`, {
+      const loginUrl = `${API_BASE}/login`;
+      console.log("DEBUG SIGNUP: Auto-login URL:", loginUrl);
+      const loginResponse = await axios.post(loginUrl, {
         email,
         password
       });
@@ -74,7 +81,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       return { error: null };
     } catch (err: any) {
-      console.error(err);
+      console.error("DEBUG SIGNUP ERROR:", err.message);
+      console.error("DEBUG SIGNUP ERROR response:", err.response?.status, err.response?.data);
+      console.error("DEBUG SIGNUP ERROR config:", err.config?.url, err.config?.method);
       return { error: new Error(err.response?.data?.detail || "Registration failed") };
     }
   };

@@ -23,6 +23,12 @@ class Settings(BaseSettings):
     HEYGEN_API_KEY: str = ""
     DEFAULT_VIDEO_PROVIDER: str = "heygen"  # "heygen" or "gemini"
 
+    # AWS S3 Configuration
+    AWS_ACCESS_KEY_ID: str = ""
+    AWS_SECRET_ACCESS_KEY: str = ""
+    AWS_S3_REGION: str = "eu-north-1"
+    AWS_S3_BUCKET_NAME: str = ""
+
     class Config:
         env_file = ".env"
         case_sensitive = True

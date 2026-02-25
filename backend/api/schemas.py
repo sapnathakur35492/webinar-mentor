@@ -239,3 +239,16 @@ class AuditLog(AuditLogBase):
 
     class Config:
         from_attributes = True
+
+# --- Onboarding Document Schemas ---
+
+class OnboardingDocumentResponse(BaseModel):
+    id: PydanticObjectId
+    MentorId: str
+    FileName: str
+    FileType: str
+    S3Url: str
+    UploadedAt: datetime
+
+    class Config:
+        from_attributes = True

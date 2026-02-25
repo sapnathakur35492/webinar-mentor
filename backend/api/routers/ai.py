@@ -69,6 +69,32 @@ async def generate_concept(mentor_id: str = Body(..., embed=True)):
         )
         await ai_output.insert()
         
+        # --- Save each concept to S3 and Webinar_Concept collection ---
+        try:
+            from core.s3 import s3_service
+            concept_list = [concepts.get("concept_1"), concepts.get("concept_2"), concepts.get("concept_3")]
+            for idx, concept_data in enumerate(concept_list, start=1):
+                if not concept_data:
+                    continue
+                concept_json = json.dumps(concept_data, indent=2, ensure_ascii=False)
+                file_name = f"concept_{mentor_id}_{idx}.json"
+                s3_url = await s3_service.upload_file(
+                    file_content=concept_json.encode("utf-8"),
+                    file_name=file_name,
+                    content_type="application/json"
+                )
+                wc = models.WebinarConcept(
+                    MentorId=mentor_id,
+                    ConceptNumber=idx,
+                    FileName=file_name,
+                    FileType="application/json",
+                    S3Url=s3_url,
+                )
+                await wc.insert()
+                print(f"[AI Router] Concept {idx} saved to S3: {s3_url}")
+        except Exception as s3_err:
+            print(f"[AI Router] WARNING: S3/DB save for concepts failed: {s3_err}")
+        
         # Update stage
         stage.status = "IN_PROGRESS"
         stage.sub_stage = "INITIAL"

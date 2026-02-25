@@ -2,6 +2,14 @@ from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
 from beanie import Document
 from datetime import datetime
+from enum import IntEnum
+
+# --- ENUMS ---
+class ConceptStatus(IntEnum):
+    """Status enum for webinar concepts: Pending=0, Approved=1, Rejected=2"""
+    Pending = 0
+    Approved = 1
+    Rejected = 2
 
 # --- SUB-MODELS ---
 class User(Document):
@@ -15,37 +23,52 @@ class User(Document):
         name = "webinar_users"
 
 class Mentor(Document):
-    user_id: str = Field(index=True, unique=True) # Link to User.id
-    email: str = Field(index=True)
-    name: str # Required by Schema
-    full_name: str
-    industry: Optional[str] = None
-    company_name: Optional[str] = None
-    website_url: Optional[str] = None
-    niche: Optional[str] = None
-    method_description: Optional[str] = None
-    target_audience: Optional[str] = None
-    audience_pain_points: Optional[str] = None
-    transformation_promise: Optional[str] = None
-    unique_mechanism: Optional[str] = None
-    personal_story: Optional[str] = None
-    philosophy: Optional[str] = None
-    key_objections: Optional[str] = None
-    testimonials: Optional[str] = None
-    
-    # Status
-    status: str = "active"
-    language_tone: str = "Norwegian"
-    
-    # Progress link
-    current_stage: str = "onboarding"
-    stage_started_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
-    
-    created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
-    updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    FullName: str = ""
+    Email: str = Field(default="", index=True)
+    PasswordHash: str = ""
+    Status: str = "active"
+    CreatedDate: Optional[str] = Field(default=None)
+    UpdatedDate: Optional[str] = None
     
     class Settings:
-        name = "webinar_mentors"
+        name = "Mentors"
+
+class OnboardingDocument(Document):
+    MentorId: str = Field(index=True)
+    FileName: str
+    FileType: str
+    S3Url: str
+    UploadedAt: datetime = Field(default_factory=datetime.utcnow)
+
+    class Settings:
+        name = "Onboarding_document"
+
+class WebinarConcept(Document):
+    MentorId: str = Field(index=True)
+    ConceptNumber: int = 1              # Which concept was approved (1, 2, or 3)
+    ConceptTitle: str = ""              # Title of the concept
+    ConceptData: Dict[str, Any] = {}    # Full approved concept data
+    Status: int = ConceptStatus.Pending # 0=Pending, 1=Approved, 2=Rejected
+    FileName: str = ""
+    FileType: str = "application/json"
+    S3Url: str = ""                     # S3 link (filled only on approval)
+    UploadedAt: datetime = Field(default_factory=datetime.utcnow)
+
+    class Settings:
+        name = "Webinar_Concept"
+
+class WebinarVideo(Document):
+    MentorId: str = Field(index=True)
+    TalkId: str = Field(default="")  # HeyGen/Gemini video ID for linking
+    Script: str = ""  # The script text used in the video
+    ScriptS3Url: str = ""  # S3 link for the script file
+    VideoS3Url: str = ""  # S3 link for the video (filled when completed)
+    VideoSourceUrl: str = ""  # Original HeyGen/Gemini URL
+    Status: str = "pending"  # pending, completed, failed
+    UploadedAt: datetime = Field(default_factory=datetime.utcnow)
+
+    class Settings:
+        name = "Webinar_Video"
 
 class Concept(BaseModel):
     title: str

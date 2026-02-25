@@ -86,7 +86,7 @@ export default function Setup() {
   useEffect(() => {
     const savedUrl = localStorage.getItem("avatar_image_url");
     if (savedUrl) {
-      const baseUrl = import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:8000';
+      const baseUrl = import.meta.env.VITE_BASE_URL;
       setAvatarPreview(`${baseUrl}${savedUrl}`);
       setAvatarUploaded(true);
     }
@@ -197,6 +197,10 @@ export default function Setup() {
   };
 
   const handleAvatarContinue = async () => {
+    if (!avatarUploaded && !avatarFile) {
+      toast.error("Please upload your avatar image before continuing.");
+      return;
+    }
     if (avatarFile && !avatarUploaded) {
       await handleUploadAvatar();
     }
@@ -698,36 +702,30 @@ ${conceptConsiderations.trim()}
             </div>
 
             {/* Actions */}
-            <div className="flex justify-between items-center pt-4">
-              <div /> {/* Spacer */}
-              <div className="flex gap-3">
-                <Button
-                  variant="ghost"
-                  onClick={() => { setStep(1); window.scrollTo(0, 0); }}
-                  className="text-white/60 hover:text-white hover:bg-white/5"
-                >
-                  Skip for Now
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-                <Button
-                  onClick={handleAvatarContinue}
-                  disabled={isUploadingAvatar}
-                  className="h-12 px-8 text-white font-semibold rounded-full transition-all hover:scale-105"
-                  style={{ background: 'linear-gradient(135deg, #3bba69, #279b65)' }}
-                >
-                  {isUploadingAvatar ? (
-                    <span className="flex items-center gap-2">
-                      <Upload className="h-4 w-4 animate-bounce" />
-                      Uploading...
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-2">
-                      {avatarPreview ? "Continue to Profile" : "Continue without Avatar"}
-                      <ArrowRight className="h-5 w-5" />
-                    </span>
-                  )}
-                </Button>
-              </div>
+            <div className="flex justify-end items-center pt-4">
+              <Button
+                onClick={handleAvatarContinue}
+                disabled={isUploadingAvatar || !avatarPreview}
+                className={cn(
+                  "h-12 px-8 text-white font-semibold rounded-full transition-all",
+                  !avatarPreview ? "opacity-50 cursor-not-allowed" : "hover:scale-105"
+                )}
+                style={{ background: !avatarPreview ? '#555' : 'linear-gradient(135deg, #3bba69, #279b65)' }}
+              >
+                {isUploadingAvatar ? (
+                  <span className="flex items-center gap-2">
+                    <Upload className="h-4 w-4 animate-bounce" />
+                    Uploading...
+                  </span>
+                ) : !avatarPreview ? (
+                  <span className="flex items-center gap-2">📷 Upload Avatar First</span>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    Continue
+                    <ArrowRight className="h-5 w-5" />
+                  </span>
+                )}
+              </Button>
             </div>
           </div>
         )}
@@ -1062,10 +1060,21 @@ ${conceptConsiderations.trim()}
               </Button>
 
               <Button
-                onClick={handleCompleteSetup}
-                disabled={isSaving}
-                className="h-12 px-8 text-white font-semibold rounded-full transition-all hover:scale-105"
-                style={{ background: 'linear-gradient(135deg, #3bba69, #279b65)' }}
+                onClick={() => {
+                  if (selectedFiles.length === 0 && (!documents || documents.length === 0)) {
+                    toast.error("Vennligst last opp minst ett dokument (PDF, video, eller transkripsjon) før du fortsetter.");
+                    return;
+                  }
+                  handleCompleteSetup();
+                }}
+                disabled={isSaving || (selectedFiles.length === 0 && (!documents || documents.length === 0))}
+                className={cn(
+                  "h-12 px-8 text-white font-semibold rounded-full transition-all",
+                  (selectedFiles.length === 0 && (!documents || documents.length === 0))
+                    ? "opacity-50 cursor-not-allowed"
+                    : "hover:scale-105"
+                )}
+                style={{ background: (selectedFiles.length === 0 && (!documents || documents.length === 0)) ? '#555' : 'linear-gradient(135deg, #3bba69, #279b65)' }}
               >
                 {isSaving && (
                   <div
@@ -1078,6 +1087,8 @@ ${conceptConsiderations.trim()}
                     {uploadProgress > 0 ? `Uploading ${uploadProgress}%` : "Processing"}
                     <Rocket className="h-5 w-5 animate-bounce" />
                   </span>
+                ) : (selectedFiles.length === 0 && (!documents || documents.length === 0)) ? (
+                  <span className="flex items-center gap-2 relative z-10">📄 Upload Documents First</span>
                 ) : (
                   <span className="flex items-center gap-2 relative z-10">Generate Magic <Sparkles className="h-5 w-5" /></span>
                 )}
