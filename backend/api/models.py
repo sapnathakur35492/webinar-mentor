@@ -23,6 +23,7 @@ class User(Document):
         name = "webinar_users"
 
 class Mentor(Document):
+    user_id: str = Field(default="", index=True)  # Links to User document
     FullName: str = ""
     Email: str = Field(default="", index=True)
     PasswordHash: str = ""
