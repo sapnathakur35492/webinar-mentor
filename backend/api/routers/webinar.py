@@ -289,6 +289,48 @@ async def admin_approve_concept(concept_id: str, request: AdminApproveRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+# --- Admin Approval for Videos ---
+@router.post("/assets/videos/{video_id}/admin-approve")
+async def admin_approve_video(video_id: str, request: AdminApproveRequest):
+    """
+    Admin approves or rejects a video.
+    Status: Pending(0) -> Approved(1) or Rejected(2)
+    """
+    try:
+        from api.models import WebinarVideo, ConceptStatus
+
+        wv = await WebinarVideo.get(video_id)
+        if not wv:
+            raise HTTPException(status_code=404, detail="Video not found")
+
+        if request.action == "approve":
+            wv.Status = ConceptStatus.Approved  # 1
+            new_status = "approved"
+            print(f"[AdminApprove] Video {video_id} APPROVED by admin")
+        elif request.action == "reject":
+            wv.Status = ConceptStatus.Rejected  # 2
+            new_status = "rejected"
+            print(f"[AdminApprove] Video {video_id} REJECTED by admin")
+        else:
+            raise HTTPException(status_code=400, detail="Invalid action. Use 'approve' or 'reject'")
+
+        await wv.save()
+
+        return {
+            "status": "success",
+            "video_id": str(wv.id),
+            "talk_id": wv.TalkId,
+            "video_status": wv.Status,  # 0=Pending, 1=Approved, 2=Rejected
+            "video_s3_url": wv.VideoS3Url,
+            "script_s3_url": wv.ScriptS3Url,
+            "action": request.action,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.post("/structure/generate")
 async def generate_structure(request: GenerateRequest, concept_text: str = Body(..., embed=True)):
     try:
@@ -559,7 +601,7 @@ async def generate_video(request: VideoGenerateRequest):
         # --- Save script to S3 and create Webinar_Video record ---
         try:
             from core.s3 import s3_service
-            from api.models import WebinarVideo
+            from api.models import WebinarVideo, ConceptStatus
             
             mentor_id = ""
             if request.asset_id:
@@ -584,10 +626,10 @@ async def generate_video(request: VideoGenerateRequest):
                 ScriptS3Url=script_s3_url,
                 VideoS3Url="",
                 VideoSourceUrl="",
-                Status="pending",
+                Status=ConceptStatus.Pending,  # 0 = Pending
             )
             await wv.insert()
-            print(f"[WebinarRouter] Script saved to S3: {script_s3_url}, Webinar_Video record: {wv.id}")
+            print(f"[WebinarRouter] Script saved to S3: {script_s3_url}, Webinar_Video record: {wv.id}, Status=Pending(0)")
         except Exception as s3_err:
             print(f"[WebinarRouter] WARNING: S3/DB save for video script failed: {s3_err}")
 
@@ -646,7 +688,7 @@ async def get_video_status(talk_id: str):
             # --- Upload video to S3 and update Webinar_Video record ---
             try:
                 from core.s3 import s3_service
-                from api.models import WebinarVideo
+                from api.models import WebinarVideo, ConceptStatus
                 import requests as req
                 
                 # Download the video from HeyGen/Gemini URL
@@ -664,9 +706,9 @@ async def get_video_status(talk_id: str):
                     if wv:
                         wv.VideoS3Url = video_s3_url
                         wv.VideoSourceUrl = video_source_url
-                        wv.Status = "completed"
+                        wv.Status = ConceptStatus.Pending  # stays 0=Pending until admin approves
                         await wv.save()
-                        print(f"[WebinarRouter] Video saved to S3: {video_s3_url}, Webinar_Video updated: {wv.id}")
+                        print(f"[WebinarRouter] Video saved to S3: {video_s3_url}, Webinar_Video updated: {wv.id}, Status=Pending(0)")
                     else:
                         # Fallback: create a new record if not found
                         wv_new = WebinarVideo(
@@ -676,10 +718,10 @@ async def get_video_status(talk_id: str):
                             ScriptS3Url="",
                             VideoS3Url=video_s3_url,
                             VideoSourceUrl=video_source_url,
-                            Status="completed",
+                            Status=ConceptStatus.Pending,  # 0 = Pending
                         )
                         await wv_new.insert()
-                        print(f"[WebinarRouter] Video saved to S3 (new record): {video_s3_url}")
+                        print(f"[WebinarRouter] Video saved to S3 (new record): {video_s3_url}, Status=Pending(0)")
                 else:
                     print(f"[WebinarRouter] WARNING: Failed to download video from {video_source_url}: HTTP {video_resp.status_code}")
             except Exception as s3_err:

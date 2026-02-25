@@ -65,7 +65,7 @@ class WebinarVideo(Document):
     ScriptS3Url: str = ""  # S3 link for the script file
     VideoS3Url: str = ""  # S3 link for the video (filled when completed)
     VideoSourceUrl: str = ""  # Original HeyGen/Gemini URL
-    Status: str = "pending"  # pending, completed, failed
+    Status: int = ConceptStatus.Pending  # 0=Pending, 1=Approved, 2=Rejected
     UploadedAt: datetime = Field(default_factory=datetime.utcnow)
 
     class Settings:
