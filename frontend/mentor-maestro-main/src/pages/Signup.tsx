@@ -51,7 +51,7 @@ export default function Signup() {
             const { error } = await signUp(email, password, fullName);
             if (error) throw error;
 
-            toast.success("Registration successful! Welcome! 🎉");
+            toast.success("Registration successful — Welcome aboard!");
             navigate("/setup");
         } catch (error: any) {
             console.error("Signup error:", error);

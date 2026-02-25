@@ -14,6 +14,12 @@ const Toaster = ({ ...props }: ToasterProps) => {
       visibleToasts={3}
       gap={10}
       closeButton
+      icons={{
+        success: null,
+        error: null,
+        warning: null,
+        info: null,
+      }}
       toastOptions={{
         duration: 4000,
         style: {
@@ -23,8 +29,8 @@ const Toaster = ({ ...props }: ToasterProps) => {
         },
         classNames: {
           toast:
-            "group toast group-[.toaster]:bg-[#142721] group-[.toaster]:text-white group-[.toaster]:border group-[.toaster]:border-[#3bba69]/30 group-[.toaster]:shadow-[0_8px_32px_rgba(0,0,0,0.4)] group-[.toaster]:rounded-xl group-[.toaster]:py-3.5 group-[.toaster]:px-5 group-[.toaster]:backdrop-blur-xl transition-all duration-300",
-          title: "group-[.toast]:font-bold group-[.toast]:text-[15px] group-[.toast]:tracking-tight group-[.toast]:text-white",
+            "group toast group-[.toaster]:bg-[#142721] group-[.toaster]:text-white group-[.toaster]:border group-[.toaster]:border-[#3bba69]/30 group-[.toaster]:shadow-[0_8px_32px_rgba(0,0,0,0.4)] group-[.toaster]:rounded-xl group-[.toaster]:py-3.5 group-[.toaster]:px-5 group-[.toaster]:backdrop-blur-xl transition-all duration-300 group-[.toaster]:text-center group-[.toaster]:justify-center",
+          title: "group-[.toast]:font-bold group-[.toast]:text-[15px] group-[.toast]:tracking-tight group-[.toast]:text-white group-[.toast]:text-center group-[.toast]:w-full",
           description: "group-[.toast]:text-white/60 group-[.toast]:text-sm group-[.toast]:mt-1",
           actionButton: "group-[.toast]:bg-[#3bba69] group-[.toast]:text-white group-[.toast]:font-semibold group-[.toast]:rounded-lg",
           cancelButton: "group-[.toast]:bg-white/10 group-[.toast]:text-white/70 group-[.toast]:rounded-lg",
