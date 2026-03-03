@@ -33,6 +33,7 @@ export interface Profile {
   philosophy?: string;
   key_objections?: string;
   testimonials?: string;
+  language_tone?: string;
   current_stage: PipelineStage;
   stage_started_at: string;
   created_at?: string;

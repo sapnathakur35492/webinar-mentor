@@ -154,12 +154,13 @@ export default function Setup() {
     });
   };
 
-  const handleUploadAvatar = async () => {
+  const handleUploadAvatar = async (): Promise<boolean> => {
     if (!avatarFile) {
       toast.error("Please select an image first.");
-      return;
+      return false;
     }
 
+    toast.dismiss();
     setIsUploadingAvatar(true);
     try {
       // Compress/resize image before uploading (max 1024px, JPEG 80%)
@@ -173,13 +174,15 @@ export default function Setup() {
         localStorage.setItem("avatar_image_path", result.file_path);
         localStorage.setItem("avatar_image_url", result.url || result.s3_url || "");
         setAvatarUploaded(true);
-        toast.success("Avatar image uploaded successfully! 🎉");
+        toast.success("Avatar image uploaded successfully!");
+        return true;
       } else {
         throw new Error("Upload failed");
       }
     } catch (e: any) {
       console.error("Avatar upload error:", e);
-      toast.error(`Upload failed: ${e?.message || "Unknown error"}`);
+      toast.error(`Upload failed: ${e?.message || "Check your connection"}`);
+      return false;
     } finally {
       setIsUploadingAvatar(false);
     }
@@ -244,9 +247,12 @@ export default function Setup() {
       toast.error("Please upload your avatar image before continuing.");
       return;
     }
+
     if (avatarFile && !avatarUploaded) {
-      await handleUploadAvatar();
+      const success = await handleUploadAvatar();
+      if (!success) return;
     }
+
     // Save the language preference to localStorage
     localStorage.setItem("selected_language", selectedLanguage);
     setStep(1);

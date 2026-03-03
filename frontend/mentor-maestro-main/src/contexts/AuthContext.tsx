@@ -20,9 +20,9 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Use environment variable for API base URL - forced to 8000 for local debugging
-const API_BASE = "http://localhost:8000/api/auth";
-console.log("FORCED AUTH API_BASE:", API_BASE);
+// Use relative path to take advantage of Vite proxy
+const API_BASE = "/api/auth";
+console.log("AUTH API_BASE:", API_BASE);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
