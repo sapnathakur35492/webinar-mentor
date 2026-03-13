@@ -20,6 +20,7 @@ export default function VideoPage() {
     const [isPolling, setIsPolling] = useState(false);
     const [isPreviewing, setIsPreviewing] = useState(false);
     const [gender, setGender] = useState<"female" | "male">("female");
+    const [imageError, setImageError] = useState(false);
     const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -249,12 +250,13 @@ export default function VideoPage() {
                                 placeholder="Enter your video script here..."
                             />
 
-                            {/* Avatar Image Info */}
-                            {avatarImageUrl && (
+                            {/* Avatar Image Info - Hidden if image fails to load */}
+                            {avatarImageUrl && !imageError && (
                                 <div className="flex items-center gap-3 p-3 rounded-lg border border-primary/20 bg-primary/5">
                                     <img
                                         src={`${import.meta.env.VITE_BASE_URL}${avatarImageUrl}`}
                                         alt="Avatar"
+                                        onError={() => setImageError(true)}
                                         className="h-12 w-12 rounded-lg object-cover border border-primary/20"
                                     />
                                     <div className="flex-1">
@@ -356,7 +358,7 @@ export default function VideoPage() {
                                                 </div>
                                                 <h3 className="font-semibold text-lg">Generation Failed</h3>
                                                 <p className="text-sm text-muted-foreground">
-                                                    {videoResult.detail || "Please try again. If the issue persists, check your Gemini API quota."}
+                                                    {videoResult.detail || (videoResult.provider === 'heygen' ? "Video provider reported an error. Please check your script and try again." : "Please try again. If the issue persists, check your Gemini API quota.")}
                                                 </p>
                                                 <Button onClick={handleGenerateVideo} variant="outline" className="gap-2">
                                                     <RefreshCw className="h-4 w-4" /> Retry

@@ -258,7 +258,20 @@ class HeyGenService:
             }
 
         if status in ("failed", "error"):
-            return {"id": video_id, "status": "error", "provider": "heygen", "raw": payload}
+            # Try to extract a useful error message from HeyGen's raw payload
+            error_detail = "HeyGen reported a failure"
+            if payload.get("data") and payload["data"].get("error"):
+                error_detail = str(payload["data"]["error"])
+            elif payload.get("error"):
+                 error_detail = str(payload["error"])
+                 
+            return {
+                "id": video_id, 
+                "status": "error", 
+                "provider": "heygen", 
+                "detail": error_detail,
+                "raw": payload
+            }
 
         return {"id": video_id, "status": "processing", "provider": "heygen", "raw": payload}
 
