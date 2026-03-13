@@ -483,7 +483,7 @@ ${conceptConsiderations.trim()}
         });
 
         let pollCount = 0;
-        const maxPolls = 60;
+        const maxPolls = 120; // 10 minutes (120 * 5s)
 
         const pollJobStatus = async () => {
           try {

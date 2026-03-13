@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-// Global axios timeout: no API call should hang for more than 120 seconds by default
-axios.defaults.timeout = 120000;
+// Global axios timeout: no API call should hang for more than 10 minutes (600 seconds)
+axios.defaults.timeout = 600000;
 
 // Use environment variable for API base URL - change in .env for production
 const API_Base = `${import.meta.env.VITE_API_BASE_URL}/webinar`;

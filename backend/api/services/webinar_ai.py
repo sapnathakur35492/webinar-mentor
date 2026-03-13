@@ -1,6 +1,7 @@
 import os
 import json
-import requests
+import httpx
+import asyncio
 from datetime import datetime
 from api.models import WebinarAsset, Concept, Slide, EmailPlan
 from api.prompts.concepts_v2 import (
@@ -71,19 +72,22 @@ class WebinarAIService:
         try:
             print(f"[WebinarAI] Starting extraction for {filename} ({len(file_bytes)} bytes)")
             if filename.lower().endswith(".pdf"):
-                reader = PdfReader(io.BytesIO(file_bytes))
-                total_pages = len(reader.pages)
-                print(f"[WebinarAI] PDF has {total_pages} pages")
-                text = ""
-                for i, page in enumerate(reader.pages):
-                    try:
-                        page_text = page.extract_text() or ""
-                        text += page_text + "\n"
-                        if i % 10 == 0 or i == total_pages - 1:
-                            print(f"[WebinarAI] Extracted through page {i+1}/{total_pages}")
-                    except Exception as page_err:
-                        print(f"[WebinarAI] Warning: Failed to extract page {i} of {filename}: {page_err}")
-                
+                def _extract():
+                    reader = PdfReader(io.BytesIO(file_bytes))
+                    total_pages = len(reader.pages)
+                    print(f"[WebinarAI] PDF has {total_pages} pages")
+                    text = ""
+                    for i, page in enumerate(reader.pages):
+                        try:
+                            page_text = page.extract_text() or ""
+                            text += page_text + "\n"
+                            if i % 10 == 0 or i == total_pages - 1:
+                                print(f"[WebinarAI] Extracted through page {i+1}/{total_pages}")
+                        except Exception as page_err:
+                            print(f"[WebinarAI] Warning: Failed to extract page {i} of {filename}: {page_err}")
+                    return text
+
+                text = await asyncio.to_thread(_extract)
                 final_len = len(text)
                 print(f"[WebinarAI] Extraction complete. Total characters: {final_len}")
                 return text
@@ -196,7 +200,7 @@ class WebinarAIService:
 
 
     async def generate_content(self, prompt: str, system_prompt: str = WEBINAR_MASTER_OS_PROMPT_NORWEGIAN, max_tokens: int = 4096) -> str:
-        """Call OpenAI API. Raises ValueError on 429/quota/API errors."""
+        """Call OpenAI API using httpx (non-blocking). Raises ValueError on 429/quota/API errors."""
         if not OPENAI_API_KEY:
             raise ValueError("OPENAI API Error (no key): OPENAI_API_KEY not set")
         try:
@@ -207,34 +211,33 @@ class WebinarAIService:
             payload = {
                 "model": "gpt-4o-mini",
                 "messages": [
-                    # Dynamic system prompt based on language
                     {"role": "system", "content": system_prompt.strip()},
                     {"role": "user", "content": prompt}
                 ],
                 "temperature": 0.7,
                 "max_tokens": max_tokens
             }
-            response = requests.post(OPENAI_ENDPOINT, headers=headers, json=payload, timeout=120)
+            
+            async with httpx.AsyncClient(timeout=180.0) as client:
+                response = await client.post(OPENAI_ENDPOINT, headers=headers, json=payload)
             
             if response.status_code == 200:
                 data = response.json()
                 if "choices" in data and len(data["choices"]) > 0:
                     content = data["choices"][0]["message"]["content"]
-                    # Check for truncation
                     finish_reason = data["choices"][0].get("finish_reason", "")
                     if finish_reason == "length":
-                        print(f"[WebinarAI] WARNING: Response was truncated (finish_reason=length). Consider increasing max_tokens.")
+                        print(f"[WebinarAI] WARNING: Response was truncated.")
                     return content
                 raise ValueError("Unexpected response format from OpenAI")
             elif response.status_code == 429:
-                # Explicit 429 handling - quota exceeded or rate limit
                 err_msg = response.text[:500] if response.text else "Rate limit / quota exceeded"
                 raise ValueError(f"OpenAI 429: {err_msg}")
             else:
                 raise ValueError(f"OpenAI API Error ({response.status_code}): {response.text[:500]}")
-        except requests.RequestException as e:
-            print(f"AI Gen Network Error: {e}")
-            raise ValueError(f"OpenAI connection failed: {e}") from e
+        except Exception as e:
+            print(f"AI Gen Error: {e}")
+            raise ValueError(f"OpenAI operation failed: {e}") from e
 
     def _get_mock_response(self, reason: str = "API error") -> dict:
         """Return mock concepts response dict (no DB)."""
