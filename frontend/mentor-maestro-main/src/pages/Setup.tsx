@@ -85,7 +85,7 @@ export default function Setup() {
   // Check if avatar was already uploaded in a previous session
   useEffect(() => {
     const savedUrl = localStorage.getItem("avatar_image_url");
-    if (savedUrl) {
+    if (savedUrl && savedUrl !== "null" && savedUrl !== "undefined" && savedUrl.length > 3) {
       // Use internal baseUrl if provided, else fallback to relative
       const baseUrl = import.meta.env.VITE_BASE_URL || "";
       setAvatarPreview(savedUrl.startsWith('http') ? savedUrl : `${baseUrl}${savedUrl}`);
@@ -666,6 +666,11 @@ ${conceptConsiderations.trim()}
                     <img
                       src={avatarPreview}
                       alt="Avatar preview"
+                      onError={() => {
+                        console.error("Avatar preview failed to load:", avatarPreview);
+                        setAvatarPreview(null);
+                        setAvatarUploaded(false);
+                      }}
                       className="w-48 h-48 object-cover rounded-2xl border-4 border-[#3bba69]/30 shadow-xl shadow-[#3bba69]/10 transition-all group-hover:border-[#3bba69]/60"
                     />
                     <div className="absolute inset-0 bg-black/40 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
