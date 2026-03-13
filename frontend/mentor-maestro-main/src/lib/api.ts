@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-// Global axios timeout: no API call should hang for more than 10 seconds
-axios.defaults.timeout = 10000;
+// Global axios timeout: no API call should hang for more than 60 seconds by default
+axios.defaults.timeout = 60000;
 
 // Use environment variable for API base URL - change in .env for production
 const API_Base = `${import.meta.env.VITE_API_BASE_URL}/webinar`;
@@ -55,6 +55,7 @@ export const api = {
     // Call Python Backend - Now returns immediately with job_id
     const response = await axios.post(`${API_Base}/upload-context`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 120000, // 2 minutes for processing plus network delay
       onUploadProgress: (progressEvent) => {
         if (onProgress && progressEvent.total) {
           const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
@@ -76,7 +77,7 @@ export const api = {
   generateConcepts: async (assetId: string) => {
     const response = await axios.post(`${API_Base}/concepts/generate`, {
       asset_id: assetId
-    });
+    }, { timeout: 120000 });
     return response.data; // { status: "success", data: { ... } }
   },
 
@@ -85,7 +86,7 @@ export const api = {
     const response = await axios.post(`${API_Base}/structure/generate`, {
       asset_id: assetId,
       concept_text: conceptText
-    });
+    }, { timeout: 120000 });
     return response.data; // { status: "success", structure: "..." }
   },
 
@@ -95,7 +96,7 @@ export const api = {
       asset_id: assetId,
       structure_text: structureText,
       product_details: productDetails
-    });
+    }, { timeout: 120000 });
     return response.data;
   },
 
@@ -104,7 +105,7 @@ export const api = {
     const response = await axios.post(`${API_Base}/emails/generate-single`, {
       email_outline: emailOutline,
       concept_context: conceptContext
-    });
+    }, { timeout: 120000 });
     return response.data;
   },
 
@@ -157,7 +158,7 @@ export const api = {
       media_type: mediaType,
       concept_text: conceptText,
       fast_mode: fastMode
-    });
+    }, { timeout: 120000 });
     return response.data;
   },
 
@@ -166,7 +167,7 @@ export const api = {
     const response = await axios.post(`${API_Base}/marketing/generate`, {
       concept_id: conceptId,
       media_type: mediaType
-    });
+    }, { timeout: 120000 });
     return response.data;
   },
 
@@ -176,7 +177,7 @@ export const api = {
       asset_id: assetId,
       concept_id: conceptId,
       feedback: feedback
-    });
+    }, { timeout: 120000 });
     return response.data;
   },
 
