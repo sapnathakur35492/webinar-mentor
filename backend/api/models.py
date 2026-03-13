@@ -24,11 +24,35 @@ class User(Document):
 
 class Mentor(Document):
     user_id: str = Field(default="", index=True)  # Links to User document
+    name: Optional[str] = None
+    email: str = Field(default="", index=True)
+    full_name: Optional[str] = None
+    company_name: Optional[str] = None
+    website_url: Optional[str] = None
+    niche: Optional[str] = None
+    industry: Optional[str] = None
+    language_tone: str = "Norwegian"
+    method_description: Optional[str] = None
+    target_audience: Optional[str] = None
+    audience_pain_points: Optional[str] = None
+    transformation_promise: Optional[str] = None
+    unique_mechanism: Optional[str] = None
+    personal_story: Optional[str] = None
+    philosophy: Optional[str] = None
+    key_objections: Optional[str] = None
+    testimonials: Optional[str] = None
+    status: str = "active"
+    current_stage: str = "onboarding"
+    stage_started_at: Optional[datetime] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    # Old fields kept temporarily for backward compatibility if any data exists
     FullName: str = ""
-    Email: str = Field(default="", index=True)
+    Email: str = ""
     PasswordHash: str = ""
     Status: str = "active"
-    CreatedDate: Optional[str] = Field(default=None)
+    CreatedDate: Optional[str] = None
     UpdatedDate: Optional[str] = None
     
     class Settings:
