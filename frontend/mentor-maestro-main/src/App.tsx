@@ -83,13 +83,15 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <Suspense fallback={
-            <div className="min-h-screen bg-background flex items-center justify-center">
-              <div className="animate-pulse text-muted-foreground">Loading...</div>
-            </div>
-          }>
-            <AppRoutes />
-          </Suspense>
+          <div className="min-h-screen bg-background text-foreground">
+            <Suspense fallback={
+              <div className="min-h-screen bg-background flex items-center justify-center">
+                <div className="animate-pulse text-muted-foreground">Loading...</div>
+              </div>
+            }>
+              <AppRoutes />
+            </Suspense>
+          </div>
         </BrowserRouter>
       </TooltipProvider>
     </AuthProvider>

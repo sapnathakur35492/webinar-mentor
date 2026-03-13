@@ -11,9 +11,9 @@ export default defineConfig(({ mode }) => ({
     allowedHosts: ["devmentor.change20.no", "localhost", ".change20.no", "127.0.0.1"],
     hmr: {
       overlay: false,
-      host: "devmentor.change20.no",
-      protocol: "wss",
-      clientPort: 443,
+    },
+    watch: {
+      usePolling: true,
     },
     proxy: {
       "/api": {
