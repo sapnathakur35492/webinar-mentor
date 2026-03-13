@@ -3,6 +3,7 @@ import boto3
 import os
 from botocore.exceptions import ClientError
 from core.settings import settings
+from starlette.concurrency import run_in_threadpool
 
 class S3Service:
     def __init__(self):
@@ -22,12 +23,13 @@ class S3Service:
             # Generate a unique path in S3: onboarding-docs/{filename}
             s3_path = f"onboarding-docs/{file_name}"
             
-            self.s3_client.put_object(
+            await run_in_threadpool(
+                self.s3_client.put_object,
                 Bucket=self.bucket_name,
                 Key=s3_path,
                 Body=file_content,
                 ContentType=content_type,
-                # ACL='public-read' # Commented out if bucket doesn't allow public ACLs, we'll use signed URLs or direct link if bucket is public
+                # ACL='public-read' # Commented out if bucket doesn't allow public ACLs
             )
             
             # Construct the S3 URL

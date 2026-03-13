@@ -187,7 +187,7 @@ export const api = {
     formData.append('file', file);
     const response = await axios.post(`${API_Base}/video/upload-avatar`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
-      timeout: 60000,  // 60 seconds timeout for large image uploads
+      timeout: 120000,  // 120 seconds timeout for large image uploads
     });
     return response.data;
   }
