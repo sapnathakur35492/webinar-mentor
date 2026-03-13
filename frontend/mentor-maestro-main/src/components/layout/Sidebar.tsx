@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import {
   LayoutDashboard,
   Lightbulb,
@@ -8,8 +9,10 @@ import {
   Mail,
   ClipboardList,
   Settings,
+  ImageIcon,
+  FileText
 } from "lucide-react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
@@ -29,7 +32,7 @@ const meetingAssets = [
     type: "image", 
     url: "/static/avatars/marit_bjorgen.png",
     path: "static/avatars/marit_bjorgen.png",
-    icon: Video,
+    icon: ImageIcon,
     description: "Professional Headshot" 
   },
   { 
@@ -37,13 +40,14 @@ const meetingAssets = [
     name: "Marits Metode (Book)", 
     type: "pdf", 
     url: "/static/MaritsMetode_Summary.pdf",
-    icon: Lightbulb,
+    icon: FileText,
     description: "Reference Document" 
   },
 ];
 
 export function Sidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
 
   return (
     <aside
@@ -95,9 +99,20 @@ export function Sidebar() {
               <button
                 key={asset.id}
                 onClick={() => {
+                  // 1. Dispatch event for currently mounted pages
                   window.dispatchEvent(new CustomEvent('sidebar-asset-selected', { detail: asset }));
+                  
+                  // 2. Queue for Setup page if not already there
+                  localStorage.setItem("queued_sidebar_asset", JSON.stringify(asset));
+                  
+                  // 3. Navigate to setup if on another page
+                  if (location.pathname !== "/setup") {
+                    navigate("/setup");
+                  }
+                  
+                  toast.success(`Applying ${asset.name}...`);
                 }}
-                className="w-full flex items-center gap-3 rounded-lg px-4 py-2 text-sm text-gray-400 hover:bg-white/5 hover:text-white transition-all group"
+                className="w-full flex items-center gap-3 rounded-lg px-4 py-2 text-sm text-gray-400 hover:bg-white/5 hover:text-white transition-all group text-left"
               >
                 <asset.icon className="h-4 w-4 text-gray-500 group-hover:text-[#3bba69]" />
                 <div className="flex flex-col items-start overflow-hidden">

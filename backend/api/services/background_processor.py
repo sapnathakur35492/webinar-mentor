@@ -93,9 +93,10 @@ class BackgroundProcessor:
             except Exception as ai_error:
                 # AI generation failed, but asset was created
                 print(f"[BackgroundProcessor] AI generation error: {ai_error}")
+                job.status = "failed"
                 job.progress = 100
-                job.status = "completed"
-                job.message = f"Document saved. AI generation had an issue: {str(ai_error)[:100]}"
+                job.error = str(ai_error)
+                job.message = f"Document saved, but AI generation failed: {str(ai_error)[:100]}"
                 job.updated_at = datetime.utcnow()
                 await job.save()
                 return

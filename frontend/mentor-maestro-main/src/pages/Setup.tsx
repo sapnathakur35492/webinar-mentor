@@ -102,17 +102,15 @@ export default function Setup() {
 
   // Handle assets selected from Sidebar
   useEffect(() => {
-    const handleAssetSelect = async (e: any) => {
-      const asset = e.detail;
-      console.log("[Setup] Sidebar asset selected:", asset);
+    const handleAssetSelect = async (asset: any) => {
+      console.log("[Setup] Processing sidebar asset:", asset);
 
       if (asset.type === "image") {
         setAvatarPreview(asset.url);
-        // We set the path directly to avoid re-uploading since it's already on the server
         localStorage.setItem("avatar_image_path", asset.path || "");
         localStorage.setItem("avatar_image_url", asset.url);
         setAvatarUploaded(true);
-        setStep(0); // Jump to Avatar step to show it worked
+        setStep(0); 
         toast.success(`Selected ${asset.name} as Avatar`);
       } 
       else if (asset.type === "pdf") {
@@ -121,8 +119,12 @@ export default function Setup() {
           const blob = await response.blob();
           const file = new File([blob], asset.name + ".pdf", { type: "application/pdf" });
           
-          setSelectedFiles(prev => [...prev, file]);
-          setStep(2); // Jump to Documents step
+          setSelectedFiles(prev => {
+            // Check if already added
+            if (prev.some(f => f.name === file.name)) return prev;
+            return [...prev, file];
+          });
+          setStep(2); 
           toast.success(`Added ${asset.name} to Documents`);
         } catch (err) {
           console.error("Failed to fetch asset PDF:", err);
@@ -131,8 +133,20 @@ export default function Setup() {
       }
     };
 
-    window.addEventListener('sidebar-asset-selected', handleAssetSelect);
-    return () => window.removeEventListener('sidebar-asset-selected', handleAssetSelect);
+    // 1. Check for queued asset from other pages
+    const queued = localStorage.getItem("queued_sidebar_asset");
+    if (queued) {
+      try {
+        const asset = JSON.parse(queued);
+        handleAssetSelect(asset);
+        localStorage.removeItem("queued_sidebar_asset");
+      } catch (e) {}
+    }
+
+    // 2. Listen for live events
+    const onEvent = (e: any) => handleAssetSelect(e.detail);
+    window.addEventListener('sidebar-asset-selected', onEvent);
+    return () => window.removeEventListener('sidebar-asset-selected', onEvent);
   }, []);
 
   const getValue = (key: string) => {
@@ -502,7 +516,8 @@ ${conceptConsiderations.trim()}
             }
 
             if (jobStatus.status === "failed") {
-              throw new Error(jobStatus.error || "Processing failed");
+              const errorMsg = jobStatus.error || jobStatus.message || "Processing failed";
+              throw new Error(errorMsg);
             }
 
             if (pollCount % 3 === 0) {

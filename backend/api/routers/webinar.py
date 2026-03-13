@@ -443,8 +443,16 @@ async def upload_avatar_image(file: UploadFile = File(...)):
     """
     try:
         from api.services.gemini_video_service import gemini_video_service
-        file_bytes = await file.read()
         
+        # LOGGING for debugging
+        print(f"[AvatarUpload] Filename: {file.filename}, Content-Type: {file.content_type}")
+        
+        file_bytes = await file.read()
+        print(f"[AvatarUpload] Read {len(file_bytes)} bytes")
+        
+        if len(file_bytes) == 0:
+            raise HTTPException(status_code=400, detail="Uploaded file is empty")
+
         # 1. Save locally (for Gemini video generation)
         result = gemini_video_service.save_avatar_image(file_bytes, file.filename)
         
@@ -463,7 +471,10 @@ async def upload_avatar_image(file: UploadFile = File(...)):
         
         return {"status": "success", "s3_url": s3_url, **result}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        import traceback
+        traceback.print_exc()
+        print(f"[AvatarUpload] ERROR: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Upload error: {str(e)}")
 
 
 @router.post("/video/generate")

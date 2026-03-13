@@ -50,19 +50,28 @@ class GeminiVideoService:
         Save an uploaded avatar image to static/avatars/.
         Returns dict with file_path and url.
         """
-        ext = os.path.splitext(filename)[1] or ".jpg"
-        unique_name = f"avatar_{uuid.uuid4().hex[:8]}{ext}"
-        file_path = os.path.join(self.avatars_dir, unique_name)
+        try:
+            # Re-ensure directory exists
+            os.makedirs(self.avatars_dir, exist_ok=True)
+            
+            ext = os.path.splitext(filename)[1] or ".jpg"
+            unique_name = f"avatar_{uuid.uuid4().hex[:8]}{ext}"
+            file_path = os.path.join(self.avatars_dir, unique_name)
 
-        with open(file_path, "wb") as f:
-            f.write(file_bytes)
+            print(f"[Gemini] Attempting to save avatar to: {file_path} ({len(file_bytes)} bytes)")
+            
+            with open(file_path, "wb") as f:
+                f.write(file_bytes)
 
-        print(f"[Gemini] Avatar image saved: {file_path}")
-        return {
-            "file_path": file_path,
-            "filename": unique_name,
-            "url": f"/static/avatars/{unique_name}",
-        }
+            print(f"[Gemini] Avatar image saved successfully: {file_path}")
+            return {
+                "file_path": file_path,
+                "filename": unique_name,
+                "url": f"/static/avatars/{unique_name}",
+            }
+        except Exception as e:
+            print(f"[Gemini] CRITICAL ERROR saving avatar image: {e}")
+            raise Exception(f"Failed to write avatar file to disk: {str(e)}")
 
     def generate_video(
         self,

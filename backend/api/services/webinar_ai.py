@@ -71,38 +71,63 @@ class WebinarAIService:
     async def extract_text_from_file(self, file_bytes: bytes, filename: str) -> str:
         try:
             print(f"[WebinarAI] Starting extraction for {filename} ({len(file_bytes)} bytes)")
+            text = ""
+            
             if filename.lower().endswith(".pdf"):
                 def _extract():
                     reader = PdfReader(io.BytesIO(file_bytes))
                     total_pages = len(reader.pages)
                     print(f"[WebinarAI] PDF has {total_pages} pages")
-                    text = ""
+                    extracted_parts = []
                     for i, page in enumerate(reader.pages):
                         try:
                             page_text = page.extract_text() or ""
-                            text += page_text + "\n"
-                            if i % 10 == 0 or i == total_pages - 1:
+                            # Basic noise reduction: strip repetitive headers/footers (regex would be better but simple strip helps)
+                            cleaned_page = self._clean_extracted_text(page_text)
+                            extracted_parts.append(cleaned_page)
+                            
+                            if (i + 1) % 20 == 0 or i == total_pages - 1:
                                 print(f"[WebinarAI] Extracted through page {i+1}/{total_pages}")
                         except Exception as page_err:
                             print(f"[WebinarAI] Warning: Failed to extract page {i} of {filename}: {page_err}")
-                    return text
+                    return "\n\n".join(extracted_parts)
 
                 text = await asyncio.to_thread(_extract)
+                
+                # Validation: if text is too tiny compared to file size, it might be an image/scanned PDF
+                if len(text) < 100 and len(file_bytes) > 50000:
+                    print(f"[WebinarAI] WARNING: Very low text yield from {filename}. Might be a scanned PDF (Image).")
+                    text += f"\n[SYSTEM NOTE: This document appears to be a scanned image. AI may have limited context from it.]\n"
+                
                 final_len = len(text)
                 print(f"[WebinarAI] Extraction complete. Total characters: {final_len}")
                 return text
+            
             elif filename.lower().endswith((".txt", ".srt", ".vtt")):
-                return file_bytes.decode("utf-8")
+                return file_bytes.decode("utf-8", errors="ignore")
+            
             elif filename.lower().endswith(".docx"):
                 import docx
                 doc = docx.Document(io.BytesIO(file_bytes))
                 return "\n".join([para.text for para in doc.paragraphs])
+            
             return ""
         except Exception as e:
             print(f"[WebinarAI] ERROR extracting text from {filename}: {e}")
             import traceback
             traceback.print_exc()
             return ""
+
+    def _clean_extracted_text(self, text: str) -> str:
+        """Strip common PDF garbage, page numbers, and excessive whitespace."""
+        import re
+        # Remove common "Page X of Y" or "Page X" patterns
+        text = re.sub(r'(?i)page\s+\d+(\s+of\s+\d+)?', '', text)
+        # Remove strings of 3+ dots (common in TOCs)
+        text = re.sub(r'\.{3,}', ' ', text)
+        # Collapse multiple newlines
+        text = re.sub(r'\n{3,}', '\n\n', text)
+        return text.strip()
 
     async def create_asset(self, mentor_id: str, onboarding_doc: str, hook_analysis: str, file_bytes: Optional[bytes] = None, filename: Optional[str] = None) -> WebinarAsset:
         if file_bytes and filename:
@@ -271,6 +296,48 @@ class WebinarAIService:
             raise ValueError("Asset not found")
         return await self._apply_mock_concepts_and_return(asset, reason)
 
+    async def summarize_context(self, text: str, system_prompt: str) -> str:
+        """Summarize large text into a focused knowledge base for webinar generation."""
+        if not text or len(text) < 4000:
+            return text
+            
+        print(f"[WebinarAI] Summarizing large context ({len(text)} chars)...")
+        
+        # Detect language hint (rough check for Norwegian keywords)
+        is_norwegian = any(w in text.lower() for w in [" og ", " er ", " som ", " på ", " det "])
+        lang_instruction = "IMPORTANT: Respond in NORWEGIAN (Bokmål)." if is_norwegian else "IMPORTANT: Respond in ENGLISH."
+        
+        summary_prompt = f"""
+        # TASK: CONTEXT SUMMARIZATION FOR WEBINAR GENERATION
+        The following text is from a mentor's onboarding documents/training materials.
+        {lang_instruction}
+        
+        **OBJECTIVE:** 
+        Create a "Webinar Knowledge Base" that extracts the high-value 'meat' from this noise.
+        
+        **INSTRUCTIONS:**
+        1. **METHODOLOGY:** Extract the core step-by-step method, framework, or proprietary system.
+        2. **TRANSFORMATION:** What is the dream result promised? (Before vs After).
+        3. **AUTHORS VOICE:** Capture specific terms, unique vocabulary, and the overall 'vibe' of the author.
+        4. **STORIES:** Keep details of case studies, personal origin stories, or client examples.
+        5. **IGNORE:** Ignore table of contents, legal footers, page numbers, and repetitive headers.
+        
+        **DOC CONTENT:**
+        \"\"\"{text[:100000]}\"\"\"
+        
+        **OUTPUT FORMAT:**
+        A structured, detailed summary (approx 2000-4000 words) that provides everything an AI would need to write three high-converting webinar concepts.
+        """
+        
+        try:
+            # Use a slightly more creative temperature for summarization to keep tone, but keep it grounded
+            summary = await self.generate_content(summary_prompt, system_prompt=system_prompt, max_tokens=4000)
+            print(f"[WebinarAI] Summary generated: {len(summary)} chars")
+            return summary
+        except Exception as e:
+            print(f"[WebinarAI] Warning: Summarization failed, fallback to truncation: {e}")
+            return text[:15000]
+
     async def generate_concepts_chain(self, asset_id: str) -> dict:
         print(f"DEBUG: generate_concepts_chain called for {asset_id}")
         print(f"DEBUG: USE_MOCK_OPENAI = {USE_MOCK_OPENAI}")
@@ -298,9 +365,17 @@ class WebinarAIService:
             tone = ctx["market_tone"]
             sys_prompt = ctx["system_prompt"]
             
+            # --- SMART CONTEXT MANAGEMENT ---
+            raw_onboarding = asset.onboarding_doc_content or ""
+            onboarding_context = raw_onboarding
+            
+            # If doc is huge, summarize it first
+            if len(raw_onboarding) > 12000:
+                onboarding_context = await self.summarize_context(raw_onboarding, sys_prompt)
+            
             # 1. Generate (use higher max_tokens for 3 detailed concepts)
             prompt_1 = CONCEPT_GENERATION_PROMPT.format(
-                onboarding_doc=asset.onboarding_doc_content or "", 
+                onboarding_doc=onboarding_context, 
                 hook_analysis=asset.hook_analysis_content or "",
                 language=lang,
                 market_tone=tone
