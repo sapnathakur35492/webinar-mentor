@@ -99,6 +99,41 @@ export default function Setup() {
     }
   }, [profile?.current_stage]);
 
+  // Handle assets selected from Sidebar
+  useEffect(() => {
+    const handleAssetSelect = async (e: any) => {
+      const asset = e.detail;
+      console.log("[Setup] Sidebar asset selected:", asset);
+
+      if (asset.type === "image") {
+        setAvatarPreview(asset.url);
+        // We set the path directly to avoid re-uploading since it's already on the server
+        localStorage.setItem("avatar_image_path", asset.path || "");
+        localStorage.setItem("avatar_image_url", asset.url);
+        setAvatarUploaded(true);
+        setStep(0); // Jump to Avatar step to show it worked
+        toast.success(`Selected ${asset.name} as Avatar`);
+      } 
+      else if (asset.type === "pdf") {
+        try {
+          const response = await fetch(asset.url);
+          const blob = await response.blob();
+          const file = new File([blob], asset.name + ".pdf", { type: "application/pdf" });
+          
+          setSelectedFiles(prev => [...prev, file]);
+          setStep(2); // Jump to Documents step
+          toast.success(`Added ${asset.name} to Documents`);
+        } catch (err) {
+          console.error("Failed to fetch asset PDF:", err);
+          toast.error("Failed to load document asset.");
+        }
+      }
+    };
+
+    window.addEventListener('sidebar-asset-selected', handleAssetSelect);
+    return () => window.removeEventListener('sidebar-asset-selected', handleAssetSelect);
+  }, []);
+
   const getValue = (key: string) => {
     if (formData[key] !== undefined) return formData[key];
     if (!profile) return "";
