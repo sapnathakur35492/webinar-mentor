@@ -14,13 +14,7 @@ Webinar Concept: {concept}
 Slide Structure: {structure}
 Product / Offer Details: {product_details}
 
-**{language} Market Guardrails:**
-- Tone: Professional, authoritative, yet approachable.
-- No "American Hype": Avoid "Last chance!", "Don't miss out!!!", or overly aggressive scarcity.
-- Trust-based: Focus on the value and the "logic-induction" (helping them see why they need this).
-
-**Language:**
-Write the entire output in {language}.
+**CRITICAL:** LANGUAGE: You MUST write the entire output in {language} only. No English allowed if {language} is Norwegian.
 
 **Sequence Requirements:**
 1. **Pre-Webinar (3-4 mails):**
@@ -78,8 +72,7 @@ Generate the full professional English copy for the email sequence based on the 
 **Tone:**
 {market_tone}. Authoritative. Calm. Logical.
 
-**Language:**
-Write the entire output in {language}.
+**CRITICAL:** LANGUAGE: You MUST write the entire output in {language} only. Every single email must be written entirely in {language}.
 
 **Output Format (JSON Array):**
 ```json
@@ -118,7 +111,7 @@ EMAIL_IMPROVEMENT_PROMPT = """
 
 Improve the email copy based on the evaluation. Focus on deepening the professional narrative and stripping away any lingering marketing clichés.
 
-**Ensure the tone is {market_tone} and language is {language}.**
+**Ensure the tone is {market_tone} and LANGUAGE is {language} (MANDATORY). Every single word must be in {language}.**
 
 **Original:**
 {emails}

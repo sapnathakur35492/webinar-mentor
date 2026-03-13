@@ -58,22 +58,34 @@ class WebinarAIService:
             return {
                 "language": "English",
                 "market_tone": "Professional, authoritative, and suitable for international markets",
-                "system_prompt": WEBINAR_MASTER_OS_PROMPT_ENGLISH
+                "system_prompt": WEBINAR_MASTER_OS_PROMPT_ENGLISH + "\n\nCRITICAL: You MUST respond in ENGLISH only. No other language is allowed."
             }
         else:
             return {
                 "language": "Norwegian (Bokmål)",
                 "market_tone": "Norwegian-market friendly (no hype, no US-style exaggeration)",
-                "system_prompt": WEBINAR_MASTER_OS_PROMPT_NORWEGIAN
+                "system_prompt": WEBINAR_MASTER_OS_PROMPT_NORWEGIAN + "\n\nCRITICAL: Du MÅ svare på NORSK (Bokmål) bare. Ingen andre språk er tillatt."
             }
 
     async def extract_text_from_file(self, file_bytes: bytes, filename: str) -> str:
         try:
+            print(f"[WebinarAI] Starting extraction for {filename} ({len(file_bytes)} bytes)")
             if filename.lower().endswith(".pdf"):
                 reader = PdfReader(io.BytesIO(file_bytes))
+                total_pages = len(reader.pages)
+                print(f"[WebinarAI] PDF has {total_pages} pages")
                 text = ""
-                for page in reader.pages:
-                    text += page.extract_text() + "\n"
+                for i, page in enumerate(reader.pages):
+                    try:
+                        page_text = page.extract_text() or ""
+                        text += page_text + "\n"
+                        if i % 10 == 0 or i == total_pages - 1:
+                            print(f"[WebinarAI] Extracted through page {i+1}/{total_pages}")
+                    except Exception as page_err:
+                        print(f"[WebinarAI] Warning: Failed to extract page {i} of {filename}: {page_err}")
+                
+                final_len = len(text)
+                print(f"[WebinarAI] Extraction complete. Total characters: {final_len}")
                 return text
             elif filename.lower().endswith((".txt", ".srt", ".vtt")):
                 return file_bytes.decode("utf-8")
@@ -83,7 +95,9 @@ class WebinarAIService:
                 return "\n".join([para.text for para in doc.paragraphs])
             return ""
         except Exception as e:
-            print(f"Error extracting text from {filename}: {e}")
+            print(f"[WebinarAI] ERROR extracting text from {filename}: {e}")
+            import traceback
+            traceback.print_exc()
             return ""
 
     async def create_asset(self, mentor_id: str, onboarding_doc: str, hook_analysis: str, file_bytes: Optional[bytes] = None, filename: Optional[str] = None) -> WebinarAsset:

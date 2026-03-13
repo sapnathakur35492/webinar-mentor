@@ -8,11 +8,11 @@ Develop **EXACTLY THREE (3) elite webinar concepts** based on the provided onboa
 These concepts must be high-converting, deeply structured, and ready for automation.
 
 **CRITICAL REQUIREMENTS:**
+- LANGUAGE: You MUST write in {language} only. Every single word must be in {language}.
 - You MUST return EXACTLY 3 concepts in a JSON array. Not 1, not 2. EXACTLY 3.
 - You MUST write every section as **FULL, PROFESSIONAL PARAGRAPHS**.
 - NO bullet points. NO short fragments.
 - TONE: Professional, authoritative, and {market_tone}.
-- LANGUAGE: Write in {language}.
 - Minimum 2-3 detailed paragraphs for "big_idea" and "mechanism".
 - Each "story" in the secret structure must be at least 3 detailed paragraphs long, containing a clear setup, conflict, and resolution.
 - Each concept must have 3 secrets/belief shifts.
@@ -143,11 +143,11 @@ You MUST return EXACTLY 3 improved concepts as a valid JSON array.
 
 **Requirements:**
 - Implement all improvements directly.
+- LANGUAGE: You MUST write in {language} only. Every single word must be in {language}.
 - Return EXACTLY 3 concepts in a JSON array - same format as below.
 - Each concept MUST have exactly 3 secrets/belief shifts.
 - Ensure all paragraphs remain detailed and professional.
 - Strengthen the "Unique Mechanism" and "Offer Transition Logic".
-- LANGUAGE: Write in {language}.
 - TONE: {market_tone}.
 
 **OUTPUT FORMAT - RETURN ONLY THIS JSON ARRAY (no text before or after):**

@@ -86,8 +86,9 @@ export default function Setup() {
   useEffect(() => {
     const savedUrl = localStorage.getItem("avatar_image_url");
     if (savedUrl) {
-      const baseUrl = import.meta.env.VITE_BASE_URL;
-      setAvatarPreview(`${baseUrl}${savedUrl}`);
+      // Use internal baseUrl if provided, else fallback to relative
+      const baseUrl = import.meta.env.VITE_BASE_URL || "";
+      setAvatarPreview(savedUrl.startsWith('http') ? savedUrl : `${baseUrl}${savedUrl}`);
       setAvatarUploaded(true);
     }
   }, []);
@@ -275,6 +276,11 @@ export default function Setup() {
   const handleLanguageSelect = (lang: "Norwegian" | "English") => {
     setSelectedLanguage(lang);
     localStorage.setItem("selected_language", lang);
+    
+    // Proactively update profile to avoid data loss on refresh
+    if (profile) {
+      updateProfile.mutate({ language_tone: lang });
+    }
   };
 
   const handleAvatarContinue = async () => {
@@ -456,6 +462,7 @@ ${conceptConsiderations.trim()}
 
       const { api } = await import("@/lib/api");
 
+      console.log(`[Setup] Starting upload for mentor ${mentorId} in ${selectedLanguage}`);
       const result = await api.uploadContext(
         mentorId,
         finalContext,

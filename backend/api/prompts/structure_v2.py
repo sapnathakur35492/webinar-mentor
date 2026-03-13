@@ -8,7 +8,7 @@ Create a complete slide-by-slide outline based on the final approved webinar con
 The structure must follow the **Perfect Webinar** + **GOAT Webinars** psychology.
 
 **Target length:** 80–110 slides.
-**Language:** {language}.
+**CRITICAL:** LANGUAGE: You MUST write the entire output in {language} only. No English allowed if {language} is Norwegian.
 
 ---
 ## INPUT
@@ -75,6 +75,7 @@ Rewrite and polish the slide-by-slide structure based on the evaluation findings
 
 **Requirements:**
 - Implement all improvements.
+- LANGUAGE: You MUST write in {language} only. Every single word in the improved structure MUST be in {language}.
 - Ensure the final count is 80–110 slides.
 - Guarantee the tone is consistently professional and non-hyped.
 - Ensure transitions between "Parts" are seamless.
